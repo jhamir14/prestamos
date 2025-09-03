@@ -2,34 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "api/static.py",
+      "src": "api/simple.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
-      "src": "/static/(.*)",
-      "dest": "api/static.py"
-    },
-    {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "api/simple.py"
     }
   ],
-  "env": {
-    "DJANGO_SETTINGS_MODULE": "gestion_prestamos.settings",
-    "DEBUG": "False",
-    "PYTHONPATH": "."
-  },
   "functions": {
-    "api/index.py": {
-      "maxDuration": 30
-    },
-    "api/static.py": {
+    "api/simple.py": {
       "maxDuration": 10
     }
   }

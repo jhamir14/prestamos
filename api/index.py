@@ -9,8 +9,11 @@ sys.path.insert(0, str(project_dir))
 # Set Django settings module
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'gestion_prestamos.settings')
 
+# Import Django components
 import django
 from django.core.wsgi import get_wsgi_application
+from django.http import HttpResponse
+from django.conf import settings
 
 # Initialize Django
 django.setup()
@@ -20,6 +23,14 @@ application = get_wsgi_application()
 
 def handler(request):
     try:
+        # Simple test response first
+        if request.get('path') == '/test':
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'text/html'},
+                'body': '<h1>Django is working!</h1>'
+            }
+        
         # Handle the request using Django's WSGI application
         return application(request)
     except Exception as e:
@@ -28,5 +39,6 @@ def handler(request):
         traceback.print_exc()
         return {
             'statusCode': 500,
-            'body': f'Internal Server Error: {str(e)}'
+            'headers': {'Content-Type': 'text/html'},
+            'body': f'<h1>Error: {str(e)}</h1><pre>{traceback.format_exc()}</pre>'
         }
