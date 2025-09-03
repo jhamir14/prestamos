@@ -117,6 +117,6 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 
 ## Contacto
 
-Tu Nombre - [@tu-twitter](https://twitter.com/tu-twitter) - email@ejemplo.com
+Jhamir Quispe Santiago - jhamirquispe2007@gmail.com
 
-Link del Proyecto: [https://github.com/tu-usuario/prestamos](https://github.com/tu-usuario/prestamos)
+Link del Proyecto: [https://github.com/jhamir14/prestamos](https://github.com/jhamir14/prestamos)
