@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Crear Préstamo</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Crear Préstamo</button>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fechaPrestamoInput = document.getElementById('id_fecha_prestamo');
+    const fechaVencimientoInput = document.getElementById('id_fecha_vencimiento');
+    
+    // Función para calcular la fecha de vencimiento (30 días después)
+    function calcularFechaVencimiento(fechaPrestamo) {
+        if (fechaPrestamo) {
+            const fecha = new Date(fechaPrestamo);
+            fecha.setDate(fecha.getDate() + 30);
+            return fecha.toISOString().split('T')[0];
+        }
+        return '';
+    }
+    
+    // Actualizar fecha de vencimiento cuando cambie la fecha de préstamo
+    if (fechaPrestamoInput && fechaVencimientoInput) {
+        fechaPrestamoInput.addEventListener('change', function() {
+            const nuevaFechaVencimiento = calcularFechaVencimiento(this.value);
+            if (nuevaFechaVencimiento) {
+                fechaVencimientoInput.value = nuevaFechaVencimiento;
+            }
+        });
+        
+        // Establecer fechas iniciales si están vacías
+        if (!fechaPrestamoInput.value) {
+            const hoy = new Date().toISOString().split('T')[0];
+            fechaPrestamoInput.value = hoy;
+            fechaVencimientoInput.value = calcularFechaVencimiento(hoy);
+        }
+    }
+});
+</script>
+{% endblock %}

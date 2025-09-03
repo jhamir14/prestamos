@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="calendar-container">
+    <div class="calendar-header">
+        <h1>Calendario de Pagos</h1>
+        <div class="loan-info">
+            <h2>{{ prestamo.cliente.nombre }}</h2>
+            <p><strong>Monto del Préstamo:</strong> ${{ prestamo.monto }}</p>
+            <p><strong>Monto Total (con 20% interés):</strong> ${{ prestamo.monto_total|floatformat:2 }}</p>
+            <p><strong>Forma de Pago:</strong> 
+                {% if prestamo.forma_pago == 'diario' %}
+                    Diario (Lunes a Sábado) - Cuota: ${{ prestamo.cuota_diaria|floatformat:2 }}
+                {% else %}
+                    Semanal - Cuota: ${{ prestamo.cuota_semanal|floatformat:2 }}
+                {% endif %}
+            </p>
+            <p><strong>Período:</strong> {{ prestamo.fecha_prestamo }} al {{ prestamo.fecha_vencimiento }}</p>
+        </div>
+    </div>
+
+    <div class="calendar-navigation">
+        <a href="?month={{ month|add:-1 }}&year={{ year }}" class="nav-btn">← Mes Anterior</a>
+        <h3>{{ month_name }} {{ year }}</h3>
+        <a href="?month={{ month|add:1 }}&year={{ year }}" class="nav-btn">Mes Siguiente →</a>
+    </div>
+
+    <div class="calendar-wrapper">
+        <div class="calendar">
+            <div class="calendar-header-days">
+                <div class="day-header">Lun</div>
+                <div class="day-header">Mar</div>
+                <div class="day-header">Mié</div>
+                <div class="day-header">Jue</div>
+                <div class="day-header">Vie</div>
+                <div class="day-header">Sáb</div>
+                <div class="day-header">Dom</div>
+            </div>
+            
+            {% for week in calendar %}
+            <div class="calendar-week">
+                {% for day in week %}
+                <div class="calendar-day {% if day == 0 %}empty{% endif %}">
+                    {% if day != 0 %}
+                        <div class="day-number">{{ day }}</div>
+                        {% for cuota in cuotas %}
+                            {% if cuota.fecha_pago.day == day and cuota.fecha_pago.month == month and cuota.fecha_pago.year == year %}
+                                <div class="payment-indicator {{ cuota.tipo_cuota }} {% if cuota.pagada %}pagada{% endif %}">
+                                    <div class="payment-amount">${{ cuota.monto|floatformat:2 }}</div>
+                                    <div class="payment-type">
+                                        {% if cuota.tipo_cuota == 'diario' %}Diario{% else %}Semanal{% endif %}
+                                    </div>
+                                    {% if not cuota.pagada %}
+                                        {% if not prestamo.estado %}
+                                            <form method="post" action="/marcar-cuota-pagada/{{ cuota.id }}/" class="mark-paid-form">
+                                                {% csrf_token %}
+                                                <button type="submit" class="mark-paid-btn">✓ Pagar</button>
+                                            </form>
+                                        {% else %}
+                                            <div class="cancelled-status">🚫 Cancelado</div>
+                                        {% endif %}
+                                    {% else %}
+                                        <div class="paid-status">✓ Pagada</div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="legend">
+        <h4>Leyenda:</h4>
+        <div class="legend-item">
+            <div class="legend-color diario"></div>
+            <span>Pago Diario (Lunes a Sábado)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color semanal"></div>
+            <span>Pago Semanal</span>
+        </div>
+    </div>
+
+    <div class="calendar-actions">
+        <a href="/descargar-calendario/{{ prestamo.id }}/" class="btn-download" target="_blank">
+            📄 Descargar Calendario PDF
+        </a>
+        {% if not prestamo.estado %}
+            <form method="post" action="/cancelar-prestamo/{{ prestamo.id }}/" style="display: inline;" onsubmit="return confirmarCancelar('{{ prestamo.cliente.nombre }}')">
+                {% csrf_token %}
+                <button type="submit" class="btn-cancel-loan">
+                    🚫 Cancelar Préstamo
+                </button>
+            </form>
+        {% else %}
+            <div class="loan-cancelled-notice">
+                <span class="cancelled-badge">⚠️ PRÉSTAMO CANCELADO</span>
+            </div>
+        {% endif %}
+        <a href="/index/" class="btn-back">← Volver al Panel</a>
+    </div>
+</div>
+
+<style>
+.calendar-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.calendar-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.calendar-header h1 {
+    color: #2c3e50;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+.loan-info {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+}
+
+.loan-info h2 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+.loan-info p {
+    margin: 8px 0;
+    color: #6c757d;
+    font-size: 1rem;
+}
+
+.calendar-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    background: white;
+    padding: 15px 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.calendar-navigation h3 {
+    color: #2c3e50;
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.nav-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    color: white;
+}
+
+.calendar-wrapper {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+}
+
+.calendar {
+    width: 100%;
+}
+
+.calendar-header-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    margin-bottom: 10px;
+}
+
+.day-header {
+    background: #f8f9fa;
+    padding: 15px;
+    text-align: center;
+    font-weight: 600;
+    color: #2c3e50;
+    border-radius: 8px;
+}
+
+.calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    margin-bottom: 1px;
+}
+
+.calendar-day {
+    min-height: 100px;
+    border: 1px solid #e9ecef;
+    padding: 8px;
+    position: relative;
+    background: white;
+    border-radius: 8px;
+}
+
+.calendar-day.empty {
+    background: #f8f9fa;
+    border: none;
+}
+
+.day-number {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.payment-indicator {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    right: 5px;
+    padding: 5px;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.payment-indicator.diario {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+}
+
+.payment-indicator.semanal {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+}
+
+.payment-indicator.pagada {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
+    opacity: 0.7;
+}
+
+.mark-paid-form {
+    margin-top: 5px;
+}
+
+.mark-paid-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mark-paid-btn:hover {
+    background: #218838;
+    transform: scale(1.05);
+}
+
+.paid-status {
+    color: #28a745;
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.cancelled-status {
+    color: #dc3545;
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.payment-amount {
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.payment-type {
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+
+.legend {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+.legend h4 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+.legend-color.diario {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.legend-color.semanal {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.calendar-actions {
+    text-align: center;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.btn-back {
+    background: #6c757d;
+    color: white;
+    padding: 15px 30px;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.btn-back:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    color: white;
+}
+
+.btn-cancel-loan {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.btn-cancel-loan:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(220, 53, 69, 0.4);
+}
+
+.btn-download {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    text-decoration: none;
+    padding: 15px 30px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+    margin-right: 15px;
+}
+
+.btn-download:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(40, 167, 69, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.loan-cancelled-notice {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 15px 30px;
+    border-radius: 10px;
+    border-left: 4px solid #dc3545;
+}
+
+.cancelled-badge {
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+    .calendar-container {
+        padding: 10px;
+    }
+    
+    .calendar-header h1 {
+        font-size: 2rem;
+    }
+    
+    .calendar-navigation {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .calendar-day {
+        min-height: 80px;
+    }
+    
+    .payment-indicator {
+        font-size: 0.7rem;
+    }
+    
+    .payment-amount {
+        font-size: 0.8rem;
+    }
+}
+</style>
+
+<script>
+function confirmarCancelar(clienteNombre) {
+    return confirm(`¿Estás seguro de que deseas cancelar el préstamo de ${clienteNombre}?\n\nEsta acción marcará el préstamo como cancelado. Las cuotas pendientes no se podrán marcar como pagadas.`);
+}
+</script>
+{% endblock %}

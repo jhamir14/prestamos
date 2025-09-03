@@ -1,0 +1,755 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="welcome-section">
+        <h1>Panel de Control</h1>
+        <p>Gestiona tus préstamos y clientes desde aquí</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="success-message {% if message.tags %}{{ message.tags }}-message{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="stats-section">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+                <h3>Clientes</h3>
+                <p>Gestiona la información de tus clientes</p>
+                <a href="/registrar-cliente/" class="stat-link">Registrar Cliente</a>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+                <h3>Préstamos</h3>
+                <p>Administra los préstamos activos</p>
+                <a href="/registrar-prestamo/" class="stat-link">Registrar Préstamo</a>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">👤</div>
+            <div class="stat-info">
+                <h3>Usuarios</h3>
+                <p>Gestiona los usuarios del sistema</p>
+                <a href="/signup/" class="stat-link">Crear Usuario</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="loans-section">
+        <div class="loans-header">
+            <h2>Préstamos Registrados</h2>
+            <div class="search-container">
+                <form method="GET" class="search-form">
+                    <input type="text" name="search" placeholder="Buscar por nombre del cliente..." 
+                           value="{{ search_query }}" class="search-input">
+                    <button type="submit" class="search-btn">🔍</button>
+                    {% if search_query %}
+                        <a href="/index/" class="clear-search">Limpiar</a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+        {% if prestamos %}
+            <div class="loans-grid">
+    {% for prestamo in prestamos %}
+                <div class="loan-card">
+                    <div class="loan-header">
+                        <h3>{{ prestamo.cliente.nombre }}</h3>
+                        <div class="loan-badges">
+                            <span class="loan-payment-type {{ prestamo.forma_pago }}">
+                                {% if prestamo.forma_pago == 'diario' %}Diario{% else %}Semanal{% endif %}
+                            </span>
+                            {% if prestamo.estado %}
+                                <span class="loan-status cancelled">Cancelado</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="loan-details">
+                        <p><strong>Monto Original:</strong> ${{ prestamo.monto }}</p>
+                        <p><strong>Monto Total (20% interés):</strong> ${{ prestamo.monto_total|floatformat:2 }}</p>
+                        <p><strong>Cuota:</strong> 
+                            {% if prestamo.forma_pago == 'diario' %}
+                                ${{ prestamo.cuota_diaria|floatformat:2 }} diaria
+                            {% else %}
+                                ${{ prestamo.cuota_semanal|floatformat:2 }} semanal
+                            {% endif %}
+                        </p>
+                        <p><strong>Período:</strong> {{ prestamo.fecha_prestamo }} al {{ prestamo.fecha_vencimiento }}</p>
+                        <p><strong>Cliente:</strong> {{ prestamo.cliente.email }}</p>
+                    </div>
+                    <div class="loan-actions">
+                        <button class="btn-view-calendar" onclick="window.location.href='/calendario-pagos/{{ prestamo.id }}/'">
+                            📅 Ver Calendario
+                        </button>
+                        <button type="button" class="btn-delete-loan" 
+                                data-prestamo-id="{{ prestamo.id }}" 
+                                data-cliente-nombre="{{ prestamo.cliente.nombre }}" 
+                                data-monto="{{ prestamo.monto }}"
+                                onclick="mostrarConfirmacionEliminar(this)">
+                            🗑️ Eliminar
+                        </button>
+                    </div>
+                </div>
+    {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>No hay préstamos registrados</h3>
+                <p>Comienza registrando tu primer préstamo</p>
+                <a href="/registrar-prestamo/" class="btn-primary">Registrar Préstamo</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.welcome-section {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.welcome-section h1 {
+    color: #2c3e50;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.welcome-section p {
+    color: #7f8c8d;
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.success-message {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+    border-left: 5px solid #28a745;
+    box-shadow: 0 2px 10px rgba(40, 167, 69, 0.1);
+    animation: slideInDown 0.5s ease-out;
+}
+
+.stats-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.stat-card {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-icon {
+    font-size: 3rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-info h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-size: 1.3rem;
+}
+
+.stat-info p {
+    color: #7f8c8d;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+}
+
+.stat-link {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.stat-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    color: white;
+}
+
+.loans-section {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+}
+
+.loans-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.loans-section h2 {
+    color: #2c3e50;
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-input {
+    padding: 10px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    width: 250px;
+    transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.search-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.clear-search {
+    background: #6c757d;
+    color: white;
+    padding: 10px 15px;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.clear-search:hover {
+    background: #5a6268;
+    color: white;
+}
+
+.loans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.loan-card {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    border-left: 4px solid #667eea;
+    transition: transform 0.3s ease;
+    position: relative;
+}
+
+.loan-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.loan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.loan-header h3 {
+    color: #2c3e50;
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.loan-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.loan-status {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.loan-status.paid {
+    background: #d4edda;
+    color: #155724;
+}
+
+.loan-status.cancelled {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.loan-payment-type {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.loan-payment-type.diario {
+    background: #d4edda;
+    color: #155724;
+}
+
+.loan-payment-type.semanal {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.loan-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: stretch;
+}
+
+.btn-view-calendar, .btn-delete-loan {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    text-decoration: none;
+    min-width: 0;
+}
+
+.btn-view-calendar:hover, .btn-delete-loan:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-delete-loan {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.btn-delete-loan:hover {
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+}
+
+.loan-actions {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.loan-details p {
+    margin: 8px 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    margin-bottom: 30px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 30px;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    color: white;
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-section {
+        grid-template-columns: 1fr;
+    }
+    
+    .loans-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-card {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* Estilos del Modal de Confirmación */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.modal-container {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 30px 20px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #e74c3c;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: #95a5a6;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    background: #f8f9fa;
+    color: #e74c3c;
+}
+
+.modal-body {
+    padding: 30px;
+    text-align: center;
+}
+
+.warning-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.modal-message {
+    font-size: 1.2rem;
+    color: #2c3e50;
+    margin-bottom: 25px;
+    font-weight: 600;
+}
+
+.loan-details {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 25px;
+    border-left: 4px solid #3498db;
+}
+
+.loan-details p {
+    margin: 8px 0;
+    color: #2c3e50;
+    font-size: 1rem;
+}
+
+.warning-text {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.warning-text p {
+    margin: 8px 0;
+    font-size: 0.95rem;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    padding: 20px 30px 30px;
+}
+
+.btn-cancel {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 15px 25px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1001;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.btn-cancel:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+}
+
+.btn-cancel:active {
+    transform: translateY(0);
+}
+
+.btn-confirm-delete {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    border: none;
+    padding: 15px 25px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1001;
+}
+
+.btn-confirm-delete:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
+}
+
+.btn-confirm-delete:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+    .modal-container {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .modal-header, .modal-body, .modal-footer {
+        padding: 20px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .warning-icon {
+        font-size: 3rem;
+    }
+}
+</style>
+
+<!-- Modal de confirmación de eliminación -->
+<div id="modalEliminar" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h2>⚠️ Confirmar Eliminación</h2>
+            <button class="modal-close" onclick="document.getElementById('modalEliminar').style.display='none'">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="warning-icon">
+                🗑️
+            </div>
+            <p class="modal-message">
+                ¿Estás seguro de que deseas eliminar este préstamo?
+            </p>
+            <div class="loan-details">
+                <p><strong>Cliente:</strong> <span id="modalClienteNombre"></span></p>
+                <p><strong>Monto:</strong> $<span id="modalMonto"></span></p>
+            </div>
+            <div class="warning-text">
+                <p>⚠️ <strong>Esta acción no se puede deshacer</strong></p>
+                <p>Se eliminarán todas las cuotas asociadas a este préstamo.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="document.getElementById('modalEliminar').style.display='none'">
+                ❌ Cancelar
+            </button>
+            <button type="button" id="btnConfirmarEliminar" class="btn-confirm-delete" onclick="confirmarEliminacion()">
+                🗑️ Sí, Eliminar
+            </button>
+        </div>
+        
+        <!-- Formulario oculto para la eliminación -->
+        <form id="formEliminar" method="post" style="display: none;">
+            {% csrf_token %}
+        </form>
+    </div>
+</div>
+
+<script>
+// Variable global para almacenar el ID del préstamo
+let prestamoIdActual = null;
+
+// Función para mostrar el modal de confirmación
+function mostrarConfirmacionEliminar(button) {
+    // Obtener datos del botón
+    prestamoIdActual = button.getAttribute('data-prestamo-id');
+    const clienteNombre = button.getAttribute('data-cliente-nombre');
+    const monto = button.getAttribute('data-monto');
+    
+    // Llenar los datos del modal
+    document.getElementById('modalClienteNombre').textContent = clienteNombre;
+    document.getElementById('modalMonto').textContent = monto;
+    
+    // Mostrar el modal
+    document.getElementById('modalEliminar').style.display = 'flex';
+}
+
+// Función para confirmar la eliminación
+function confirmarEliminacion() {
+    if (prestamoIdActual) {
+        // Crear y enviar el formulario
+        const form = document.getElementById('formEliminar');
+        form.action = `/eliminar-prestamo/${prestamoIdActual}/`;
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

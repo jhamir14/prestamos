@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="report-container">
+    <div class="report-header">
+        <h1>Reporte de Pagos Semanales</h1>
+        <p class="report-date">Fecha: {{ fecha_hoy|date:"d/m/Y" }}</p>
+    </div>
+
+    <!-- Estadísticas generales -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+                <h3>{{ total_cuotas }}</h3>
+                <p>Cuotas por Cobrar Hoy</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-content">
+                <h3>${{ total_monto|floatformat:2 }}</h3>
+                <p>Monto Total por Cobrar</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-content">
+                <h3>{{ prestamos_semanal_activos }}</h3>
+                <p>Préstamos Semanales Activos</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+                <h3>{{ cuotas_pagadas_hoy }}</h3>
+                <p>Cuotas Pagadas Hoy</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de cuotas por cobrar -->
+    <div class="payments-section">
+        <h2>Cuotas por Cobrar Hoy</h2>
+        
+        {% if cuotas_vencidas_hoy %}
+            <div class="payments-table-container">
+                <table class="payments-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Préstamo</th>
+                            <th>Monto Cuota</th>
+                            <th>Fecha de Pago</th>
+                            <th>Teléfono</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cuota in cuotas_vencidas_hoy %}
+                        <tr>
+                            <td>
+                                <div class="client-info">
+                                    <strong>{{ cuota.prestamo.cliente.nombre }}</strong>
+                                    <small>{{ cuota.prestamo.cliente.email }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="loan-info">
+                                    <span class="loan-amount">${{ cuota.prestamo.monto|floatformat:2 }}</span>
+                                    <small>Préstamo #{{ cuota.prestamo.id }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="payment-amount">${{ cuota.monto|floatformat:2 }}</span>
+                            </td>
+                            <td>
+                                <span class="payment-date">{{ cuota.fecha_pago|date:"d/m/Y" }}</span>
+                            </td>
+                            <td>
+                                <a href="tel:{{ cuota.prestamo.cliente.telefono }}" class="phone-link">
+                                    {{ cuota.prestamo.cliente.telefono }}
+                                </a>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{% url 'calendario_pagos' cuota.prestamo.id %}" class="btn-view">
+                                        Ver Calendario
+                                    </a>
+                                    <form method="post" action="{% url 'marcar_cuota_pagada' cuota.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-mark-paid" onclick="return confirm('¿Marcar esta cuota como pagada?')">
+                                            Marcar Pagada
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="no-payments">
+                <div class="no-payments-icon">🎉</div>
+                <h3>¡Excelente!</h3>
+                <p>No hay cuotas semanales pendientes para hoy.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="report-actions">
+        <a href="{% url 'index' %}" class="btn-back">Volver al Panel</a>
+        <a href="{% url 'registrar_prestamo' %}" class="btn-new-loan">Nuevo Préstamo</a>
+    </div>
+</div>
+
+<style>
+.report-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.report-header {
+    text-align: center;
+    margin-bottom: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.report-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.report-date {
+    margin: 0;
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border: 1px solid #f0f0f0;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    color: white;
+}
+
+.stat-content h3 {
+    margin: 0 0 5px 0;
+    font-size: 2rem;
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+.stat-content p {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.payments-section {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.payments-section h2 {
+    color: #2c3e50;
+    margin-bottom: 25px;
+    font-size: 1.8rem;
+    border-bottom: 3px solid #667eea;
+    padding-bottom: 10px;
+}
+
+.payments-table-container {
+    overflow-x: auto;
+}
+
+.payments-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.payments-table th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    border-radius: 10px 10px 0 0;
+}
+
+.payments-table td {
+    padding: 15px;
+    border-bottom: 1px solid #e1e8ed;
+    vertical-align: middle;
+}
+
+.payments-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.client-info strong {
+    display: block;
+    color: #2c3e50;
+    font-size: 1.1rem;
+}
+
+.client-info small {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.loan-info .loan-amount {
+    display: block;
+    color: #27ae60;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.loan-info small {
+    color: #7f8c8d;
+    font-size: 0.8rem;
+}
+
+.payment-amount {
+    color: #e74c3c;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.payment-date {
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+.phone-link {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.phone-link:hover {
+    text-decoration: underline;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.btn-view {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    padding: 8px 15px;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    border: none;
+    cursor: pointer;
+    min-width: 120px;
+    text-align: center;
+    box-sizing: border-box;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-view:hover {
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+
+.btn-mark-paid {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+    text-align: center;
+    box-sizing: border-box;
+    height: 36px;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-mark-paid:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+}
+
+.no-payments {
+    text-align: center;
+    padding: 60px 20px;
+    color: #7f8c8d;
+}
+
+.no-payments-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.no-payments h3 {
+    color: #27ae60;
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.report-actions {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.btn-back {
+    background: #6c757d;
+    color: white;
+    padding: 15px 30px;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-back:hover {
+    background: #5a6268;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-new-loan {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 30px;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-new-loan:hover {
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+@media (max-width: 768px) {
+    .report-container {
+        padding: 15px;
+    }
+    
+    .report-header h1 {
+        font-size: 2rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-card {
+        padding: 20px;
+    }
+    
+    .payments-section {
+        padding: 20px;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .report-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+</style>
+{% endblock %}
