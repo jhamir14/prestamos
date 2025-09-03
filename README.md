@@ -120,3 +120,4 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 Jhamir Quispe Santiago - jhamirquispe2007@gmail.com
 
 Link del Proyecto: [https://github.com/jhamir14/prestamos](https://github.com/jhamir14/prestamos)
+
