@@ -4,9 +4,17 @@
     {
       "src": "api/index.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "api/static.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "api/static.py"
+    },
     {
       "src": "/(.*)",
       "dest": "api/index.py"
@@ -14,6 +22,15 @@
   ],
   "env": {
     "DJANGO_SETTINGS_MODULE": "gestion_prestamos.settings",
-    "DEBUG": "False"
+    "DEBUG": "False",
+    "PYTHONPATH": "."
+  },
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 30
+    },
+    "api/static.py": {
+      "maxDuration": 10
+    }
   }
 }
