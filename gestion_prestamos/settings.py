@@ -76,12 +76,21 @@ WSGI_APPLICATION = 'gestion_prestamos.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Parse database URL
+database_url = os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3')
+database_config = dj_database_url.parse(database_url)
+
+# Add connection settings only for PostgreSQL
+if database_config['ENGINE'] == 'django.db.backends.postgresql':
+    database_config.update({
+        'CONN_MAX_AGE': 600,
+        'OPTIONS': {
+            'sslmode': 'require',
+        }
+    })
+
 DATABASES = {
-    'default': dj_database_url.parse(
-        os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    'default': database_config
 }
 
 
@@ -136,11 +145,7 @@ CSRF_COOKIE_HTTPONLY = True
 CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000,http://127.0.0.1:8000').split(',')
 
 # Database connection settings for production
-if not DEBUG:
-    DATABASES['default']['CONN_MAX_AGE'] = 600
-    DATABASES['default']['OPTIONS'] = {
-        'sslmode': 'require',
-    }
+# These are now handled above in the database configuration
 
 # Security settings for production
 if not DEBUG:
