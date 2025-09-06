@@ -78,7 +78,9 @@ WSGI_APPLICATION = 'gestion_prestamos.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.parse(
-        os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3')
+        os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3'),
+        conn_max_age=600,
+        conn_health_checks=True,
     )
 }
 
@@ -132,6 +134,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
 CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000,http://127.0.0.1:8000').split(',')
+
+# Database connection settings for production
+if not DEBUG:
+    DATABASES['default']['CONN_MAX_AGE'] = 600
+    DATABASES['default']['OPTIONS'] = {
+        'sslmode': 'require',
+    }
 
 # Security settings for production
 if not DEBUG:

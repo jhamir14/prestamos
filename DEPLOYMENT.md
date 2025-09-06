@@ -95,6 +95,29 @@ Una vez desplegada, podrás acceder a tu aplicación en:
   - Usuario: `admin`
   - Contraseña: `admin123`
 
+## Persistencia de Datos
+
+### Base de Datos PostgreSQL
+Tu aplicación está configurada para usar PostgreSQL en producción, lo que garantiza que:
+
+- **Todos los datos se mantienen** entre reinicios del servidor
+- **Los registros persisten** cuando se refresca la página o se cierra y vuelve a entrar
+- **Las migraciones se ejecutan automáticamente** durante el despliegue
+- **La conexión es estable** con configuración de reconexión automática
+
+### Configuración de Persistencia
+La configuración incluye:
+- `CONN_MAX_AGE=600`: Mantiene conexiones activas por 10 minutos
+- `conn_health_checks=True`: Verifica la salud de las conexiones
+- `sslmode=require`: Conexión segura a la base de datos
+
+### Verificación de Persistencia
+Para verificar que los datos persisten:
+1. Crea algunos préstamos y clientes
+2. Refresca la página - los datos deben mantenerse
+3. Cierra y vuelve a abrir el navegador - los datos deben estar ahí
+4. Reinicia el servicio en Render - los datos deben persistir
+
 ## Configuración de Producción
 
 ### Cambiar Contraseña de Admin

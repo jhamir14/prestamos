@@ -16,6 +16,8 @@ services:
         fromDatabase:
           name: gestion-prestamos-db
           property: connectionString
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://gestion-prestamos.onrender.com"
     healthCheckPath: "/"
 
   - type: pserv
