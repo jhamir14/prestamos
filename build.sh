@@ -2,7 +2,14 @@
 # Exit on error
 set -o errexit
 
-# Install dependencies
+# Upgrade pip
+pip install --upgrade pip
+
+# Install system dependencies for PostgreSQL
+apt-get update
+apt-get install -y libpq-dev
+
+# Install Python dependencies
 pip install -r requirements.txt
 
 # Apply any outstanding database migrations
