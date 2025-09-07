@@ -369,8 +369,8 @@ def descargar_calendario_pdf(request, prestamo_id):
     story.append(Paragraph(f"<b>Cliente:</b> {prestamo.cliente.nombre}", styles['Normal']))
     story.append(Paragraph(f"<b>Email:</b> {prestamo.cliente.email}", styles['Normal']))
     story.append(Paragraph(f"<b>Teléfono:</b> {prestamo.cliente.telefono}", styles['Normal']))
-    story.append(Paragraph(f"<b>Monto del Préstamo:</b> ${prestamo.monto:,.2f}", styles['Normal']))
-    story.append(Paragraph(f"<b>Monto Total a Pagar:</b> ${prestamo.monto_total:,.2f}", styles['Normal']))
+    story.append(Paragraph(f"<b>Monto del Préstamo:</b> S/ {prestamo.monto:,.2f}", styles['Normal']))
+    story.append(Paragraph(f"<b>Monto Total a Pagar:</b> S/ {prestamo.monto_total:,.2f}", styles['Normal']))
     story.append(Paragraph(f"<b>Forma de Pago:</b> {prestamo.get_forma_pago_display()}", styles['Normal']))
     story.append(Paragraph(f"<b>Fecha de Préstamo:</b> {prestamo.fecha_prestamo.strftime('%d/%m/%Y')}", styles['Normal']))
     story.append(Paragraph(f"<b>Fecha de Vencimiento:</b> {prestamo.fecha_vencimiento.strftime('%d/%m/%Y')}", styles['Normal']))
@@ -387,17 +387,24 @@ def descargar_calendario_pdf(request, prestamo_id):
     data = [['N°', 'Fecha de Pago', 'Monto', 'Estado']]
     
     for i, cuota in enumerate(cuotas, 1):
-        estado = "Pagado" if cuota.pagada else "Pendiente"
+        if cuota.pagada:
+            estado = "Pagado"
+        elif prestamo.estado:  # Si el préstamo está cancelado
+            estado = "Cancelado"
+        else:
+            estado = "Pendiente"
         data.append([
             str(i),
             cuota.fecha_pago.strftime('%d/%m/%Y'),
-            f"${cuota.monto:,.2f}",
+            f"S/ {cuota.monto:,.2f}",
             estado
         ])
     
     # Crear la tabla
     table = Table(data, colWidths=[1*inch, 2*inch, 1.5*inch, 1.5*inch])
-    table.setStyle(TableStyle([
+    
+    # Crear estilos de tabla
+    table_style = [
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -407,7 +414,22 @@ def descargar_calendario_pdf(request, prestamo_id):
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ('FONTSIZE', (0, 1), (-1, -1), 10),
-    ]))
+    ]
+    
+    # Aplicar colores según el estado de cada fila
+    for i, row in enumerate(data[1:], 1):  # Saltar el encabezado
+        estado = row[3]  # El estado está en la columna 3
+        if estado == "Pagado":
+            table_style.append(('BACKGROUND', (0, i), (-1, i), colors.lightgreen))
+            table_style.append(('TEXTCOLOR', (0, i), (-1, i), colors.darkgreen))
+        elif estado == "Cancelado":
+            table_style.append(('BACKGROUND', (0, i), (-1, i), colors.lightcoral))
+            table_style.append(('TEXTCOLOR', (0, i), (-1, i), colors.darkred))
+        else:  # Pendiente
+            table_style.append(('BACKGROUND', (0, i), (-1, i), colors.lightyellow))
+            table_style.append(('TEXTCOLOR', (0, i), (-1, i), colors.darkorange))
+    
+    table.setStyle(TableStyle(table_style))
     
     story.append(table)
     story.append(Spacer(1, 20))
@@ -423,8 +445,8 @@ def descargar_calendario_pdf(request, prestamo_id):
     story.append(Paragraph(f"<b>Total de Cuotas:</b> {total_cuotas}", styles['Normal']))
     story.append(Paragraph(f"<b>Cuotas Pagadas:</b> {cuotas_pagadas}", styles['Normal']))
     story.append(Paragraph(f"<b>Cuotas Pendientes:</b> {cuotas_pendientes}", styles['Normal']))
-    story.append(Paragraph(f"<b>Monto Pagado:</b> ${monto_pagado:,.2f}", styles['Normal']))
-    story.append(Paragraph(f"<b>Monto Pendiente:</b> ${monto_pendiente:,.2f}", styles['Normal']))
+    story.append(Paragraph(f"<b>Monto Pagado:</b> S/ {monto_pagado:,.2f}", styles['Normal']))
+    story.append(Paragraph(f"<b>Monto Pendiente:</b> S/ {monto_pendiente:,.2f}", styles['Normal']))
     
     story.append(Spacer(1, 20))
     
