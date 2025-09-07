@@ -14,15 +14,15 @@ services:
         value: "gestion-prestamos.onrender.com"
       - key: DATABASE_URL
         fromDatabase:
-          name: gestion-prestamos-db
+          name: prestamos-postgresql-db
           property: connectionString
       - key: CSRF_TRUSTED_ORIGINS
         value: "https://gestion-prestamos.onrender.com"
     healthCheckPath: "/"
 
   - type: pserv
-    name: gestion-prestamos-db
+    name: prestamos-postgresql-db
     env: python
     plan: free
-    databaseName: gestion_prestamos
-    databaseUser: gestion_prestamos_user
+    databaseName: dbprestamos
+    databaseUser: userprestamos
