@@ -82,6 +82,8 @@ database_config = dj_database_url.parse(database_url)
 
 # Add connection settings only for PostgreSQL
 if database_config['ENGINE'] == 'django.db.backends.postgresql':
+    # Use psycopg3 instead of psycopg2
+    database_config['ENGINE'] = 'django.db.backends.postgresql'
     database_config.update({
         'CONN_MAX_AGE': 600,
         'OPTIONS': {
