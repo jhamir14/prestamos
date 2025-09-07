@@ -260,8 +260,64 @@ def signout(request):
     messages.success(request, 'Has cerrado sesión exitosamente.')
     return redirect('home')
 
+def prestamos_diarios(request):
+    """Vista para mostrar solo préstamos diarios"""
+    # Solo usuarios autenticados pueden ver los préstamos
+    if not request.user.is_authenticated:
+        return redirect('signin')
+    
+    # Obtener parámetro de búsqueda
+    search_query = request.GET.get('search', '')
+    
+    if search_query:
+        # Buscar por nombre del cliente en préstamos diarios
+        prestamos = Prestamo.objects.filter(
+            cliente__nombre__icontains=search_query,
+            forma_pago='diario'
+        )
+    else:
+        prestamos = Prestamo.objects.filter(forma_pago='diario')
+
+    # Calcular el total de dinero prestado
+    total_prestado = sum(prestamo.monto for prestamo in prestamos)
+
+    return render(request, 'prestamos_diarios.html', {
+        'prestamos': prestamos,
+        'search_query': search_query,
+        'tipo_prestamo': 'diario',
+        'total_prestado': total_prestado
+    })
+
+def prestamos_semanales(request):
+    """Vista para mostrar solo préstamos semanales"""
+    # Solo usuarios autenticados pueden ver los préstamos
+    if not request.user.is_authenticated:
+        return redirect('signin')
+    
+    # Obtener parámetro de búsqueda
+    search_query = request.GET.get('search', '')
+    
+    if search_query:
+        # Buscar por nombre del cliente en préstamos semanales
+        prestamos = Prestamo.objects.filter(
+            cliente__nombre__icontains=search_query,
+            forma_pago='semanal'
+        )
+    else:
+        prestamos = Prestamo.objects.filter(forma_pago='semanal')
+
+    # Calcular el total de dinero prestado
+    total_prestado = sum(prestamo.monto for prestamo in prestamos)
+
+    return render(request, 'prestamos_semanales.html', {
+        'prestamos': prestamos,
+        'search_query': search_query,
+        'tipo_prestamo': 'semanal',
+        'total_prestado': total_prestado
+    })
+
 def reporte_pagos(request):
-    """Muestra un reporte de pagos semanales que vencen hoy"""
+    """Muestra un reporte de pagos que vencen hoy y préstamos con cuotas retrasadas"""
     # Solo usuarios autenticados pueden ver el reporte
     if not request.user.is_authenticated:
         return redirect('signin')
@@ -269,34 +325,46 @@ def reporte_pagos(request):
     # Obtener la fecha actual
     hoy = date.today()
     
-    # Buscar cuotas semanales que vencen hoy y no han sido pagadas
+    # Buscar cuotas que vencen hoy y no han sido pagadas (tanto diarias como semanales)
     cuotas_vencidas_hoy = CuotaPago.objects.filter(
         fecha_pago=hoy,
-        tipo_cuota='semanal',
         pagada=False
     ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre')
     
-    # Calcular totales
-    total_cuotas = cuotas_vencidas_hoy.count()
-    total_monto = sum(cuota.monto for cuota in cuotas_vencidas_hoy)
+    # Buscar préstamos con cuotas retrasadas (fecha de pago menor a hoy y no pagadas)
+    cuotas_retrasadas = CuotaPago.objects.filter(
+        fecha_pago__lt=hoy,
+        pagada=False
+    ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre', 'fecha_pago')
+    
+    # Calcular totales para cuotas de hoy
+    total_cuotas_hoy = cuotas_vencidas_hoy.count()
+    total_monto_hoy = sum(cuota.monto for cuota in cuotas_vencidas_hoy)
+    
+    # Calcular totales para cuotas retrasadas
+    total_cuotas_retrasadas = cuotas_retrasadas.count()
+    total_monto_retrasadas = sum(cuota.monto for cuota in cuotas_retrasadas)
     
     # Obtener estadísticas adicionales
-    prestamos_semanal_activos = Prestamo.objects.filter(
-        forma_pago='semanal',
-        estado=False
-    ).count()
+    prestamos_activos = Prestamo.objects.filter(estado=False).count()
+    prestamos_diarios_activos = Prestamo.objects.filter(forma_pago='diario', estado=False).count()
+    prestamos_semanales_activos = Prestamo.objects.filter(forma_pago='semanal', estado=False).count()
     
     cuotas_pagadas_hoy = CuotaPago.objects.filter(
         fecha_pago=hoy,
-        tipo_cuota='semanal',
         pagada=True
     ).count()
     
     context = {
         'cuotas_vencidas_hoy': cuotas_vencidas_hoy,
-        'total_cuotas': total_cuotas,
-        'total_monto': total_monto,
-        'prestamos_semanal_activos': prestamos_semanal_activos,
+        'cuotas_retrasadas': cuotas_retrasadas,
+        'total_cuotas_hoy': total_cuotas_hoy,
+        'total_monto_hoy': total_monto_hoy,
+        'total_cuotas_retrasadas': total_cuotas_retrasadas,
+        'total_monto_retrasadas': total_monto_retrasadas,
+        'prestamos_activos': prestamos_activos,
+        'prestamos_diarios_activos': prestamos_diarios_activos,
+        'prestamos_semanales_activos': prestamos_semanales_activos,
         'cuotas_pagadas_hoy': cuotas_pagadas_hoy,
         'fecha_hoy': hoy,
     }
