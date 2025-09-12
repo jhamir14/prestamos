@@ -3,6 +3,11 @@
 
 {% block content %}
 <div class="report-container">
+    <!-- Indicador de carga -->
+    <div id="loading-indicator" class="loading-indicator" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>Cargando reporte...</p>
+    </div>
     <div class="report-header">
         <h1>Reporte de Pagos</h1>
         <p class="report-date">Fecha: {{ fecha_hoy|date:"d/m/Y" }}</p>
@@ -98,7 +103,8 @@
         <h2>Cuotas por Cobrar Hoy</h2>
         
         {% if cuotas_vencidas_hoy %}
-            <div class="payments-table-container">
+            <!-- Vista de escritorio -->
+            <div class="payments-table-container desktop-view">
                 <table class="payments-table">
                     <thead>
                         <tr>
@@ -160,6 +166,58 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Vista móvil -->
+            <div class="mobile-cards-container mobile-view">
+                {% for cuota in cuotas_vencidas_hoy %}
+                <div class="payment-card">
+                    <div class="card-header">
+                        <div class="client-info-mobile">
+                            <h3>{{ cuota.prestamo.cliente.nombre }}</h3>
+                            <p class="client-email">{{ cuota.prestamo.cliente.email }}</p>
+                        </div>
+                        <div class="payment-type-mobile {{ cuota.tipo_cuota }}">
+                            {% if cuota.tipo_cuota == 'diario' %}Diario{% else %}Semanal{% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="payment-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Préstamo:</span>
+                                <span class="detail-value">S/{{ cuota.prestamo.monto|floatformat:2 }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Cuota:</span>
+                                <span class="detail-value amount">S/{{ cuota.monto|floatformat:2 }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Fecha:</span>
+                                <span class="detail-value">{{ cuota.fecha_pago|date:"d/m/Y" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Teléfono:</span>
+                                <a href="tel:{{ cuota.prestamo.cliente.telefono }}" class="phone-link-mobile">
+                                    {{ cuota.prestamo.cliente.telefono }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-actions">
+                        <a href="{% url 'calendario_pagos' cuota.prestamo.id %}" class="btn-view-mobile">
+                            📅 Ver Calendario
+                        </a>
+                        <form method="post" action="{% url 'marcar_cuota_pagada' cuota.id %}" class="form-mobile">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-mark-paid-mobile" onclick="return confirm('¿Marcar esta cuota como pagada?')">
+                                ✅ Marcar Pagada
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         {% else %}
             <div class="no-payments">
                 <div class="no-payments-icon">🎉</div>
@@ -174,7 +232,8 @@
         <h2>Cuotas Retrasadas</h2>
         
         {% if cuotas_retrasadas %}
-            <div class="payments-table-container">
+            <!-- Vista de escritorio -->
+            <div class="payments-table-container desktop-view">
                 <table class="payments-table">
                     <thead>
                         <tr>
@@ -241,6 +300,64 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Vista móvil -->
+            <div class="mobile-cards-container mobile-view">
+                {% for cuota in cuotas_retrasadas %}
+                <div class="payment-card overdue-card">
+                    <div class="card-header">
+                        <div class="client-info-mobile">
+                            <h3>{{ cuota.prestamo.cliente.nombre }}</h3>
+                            <p class="client-email">{{ cuota.prestamo.cliente.email }}</p>
+                        </div>
+                        <div class="payment-type-mobile {{ cuota.tipo_cuota }}">
+                            {% if cuota.tipo_cuota == 'diario' %}Diario{% else %}Semanal{% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="payment-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Préstamo:</span>
+                                <span class="detail-value">S/{{ cuota.prestamo.monto|floatformat:2 }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Cuota:</span>
+                                <span class="detail-value amount overdue">S/{{ cuota.monto|floatformat:2 }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Fecha Vencida:</span>
+                                <span class="detail-value overdue">{{ cuota.fecha_pago|date:"d/m/Y" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Días Retraso:</span>
+                                <span class="detail-value days-overdue-mobile">
+                                    {{ cuota.fecha_pago|days_overdue }}
+                                </span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Teléfono:</span>
+                                <a href="tel:{{ cuota.prestamo.cliente.telefono }}" class="phone-link-mobile">
+                                    {{ cuota.prestamo.cliente.telefono }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-actions">
+                        <a href="{% url 'calendario_pagos' cuota.prestamo.id %}" class="btn-view-mobile">
+                            📅 Ver Calendario
+                        </a>
+                        <form method="post" action="{% url 'marcar_cuota_pagada' cuota.id %}" class="form-mobile">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-mark-paid-mobile" onclick="return confirm('¿Marcar esta cuota como pagada?')">
+                                ✅ Marcar Pagada
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         {% else %}
             <div class="no-payments">
@@ -538,43 +655,224 @@
     box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
 }
 
+/* Estilos para tarjetas móviles */
+.mobile-cards-container {
+    display: none;
+}
+
+.payment-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+    border: 1px solid #e1e8ed;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.payment-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.overdue-card {
+    border-left: 4px solid #e74c3c;
+    background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-bottom: 1px solid #e1e8ed;
+}
+
+.client-info-mobile h3 {
+    margin: 0 0 5px 0;
+    color: #2c3e50;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.client-email {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.payment-type-mobile {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.payment-type-mobile.diario {
+    background: #d4edda;
+    color: #155724;
+}
+
+.payment-type-mobile.semanal {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.payment-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+.detail-value {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    text-align: right;
+}
+
+.detail-value.amount {
+    font-weight: 700;
+    color: #e74c3c;
+    font-size: 1rem;
+}
+
+.detail-value.overdue {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.days-overdue-mobile {
+    background: #e74c3c;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.phone-link-mobile {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.phone-link-mobile:hover {
+    text-decoration: underline;
+}
+
+.card-actions {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #e1e8ed;
+}
+
+.btn-view-mobile, .btn-mark-paid-mobile {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-view-mobile {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+}
+
+.btn-view-mobile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+    color: white;
+}
+
+.btn-mark-paid-mobile {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    color: white;
+}
+
+.btn-mark-paid-mobile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+}
+
+.form-mobile {
+    flex: 1;
+    margin: 0;
+}
+
 @media (max-width: 768px) {
     .report-container {
-        padding: 15px;
+        padding: 10px;
     }
     
     .report-header {
-        padding: 20px;
+        padding: 20px 15px;
     }
     
     .report-header h1 {
-        font-size: 2rem;
+        font-size: 1.8rem;
     }
     
     .report-date {
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
     
     .stats-grid {
         grid-template-columns: 1fr;
         gap: 15px;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
     }
     
     .stat-card {
-        padding: 20px;
-        flex-direction: column;
-        text-align: center;
+        padding: 20px 15px;
+        flex-direction: row;
+        text-align: left;
     }
     
     .stat-icon {
         font-size: 2rem;
         width: 50px;
         height: 50px;
+        flex-shrink: 0;
     }
     
     .stat-content h3 {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
     }
     
     .stat-content p {
@@ -582,64 +880,81 @@
     }
     
     .payments-section {
-        padding: 20px;
+        padding: 15px;
+        margin-bottom: 20px;
     }
     
     .payments-section h2 {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
+        margin-bottom: 20px;
     }
     
-    .payments-table-container {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    /* Ocultar tabla en móvil */
+    .desktop-view {
+        display: none;
     }
     
-    .payments-table {
-        min-width: 600px;
+    /* Mostrar tarjetas en móvil */
+    .mobile-view {
+        display: block;
     }
     
-    .payments-table th,
-    .payments-table td {
-        padding: 10px 8px;
+    .mobile-cards-container {
+        display: block;
+    }
+    
+    .payment-card {
+        margin-bottom: 15px;
+    }
+    
+    .card-header {
+        padding: 15px;
+    }
+    
+    .client-info-mobile h3 {
+        font-size: 1.1rem;
+    }
+    
+    .client-email {
         font-size: 0.85rem;
     }
     
-    .client-info strong {
-        font-size: 1rem;
+    .card-body {
+        padding: 15px;
     }
     
-    .client-info small {
-        font-size: 0.8rem;
+    .detail-row {
+        padding: 6px 0;
     }
     
-    .loan-amount {
-        font-size: 1rem;
+    .detail-label {
+        font-size: 0.85rem;
     }
     
-    .loan-info small {
-        font-size: 0.75rem;
+    .detail-value {
+        font-size: 0.85rem;
     }
     
-    .payment-amount {
-        font-size: 1rem;
+    .detail-value.amount {
+        font-size: 0.95rem;
     }
     
-    .action-buttons {
+    .card-actions {
+        padding: 15px;
         flex-direction: column;
         gap: 8px;
     }
     
-    .btn-view, .btn-mark-paid {
-        padding: 6px 12px;
-        font-size: 0.8rem;
-        min-width: 100px;
-        height: 32px;
+    .btn-view-mobile, .btn-mark-paid-mobile {
+        padding: 12px 16px;
+        font-size: 0.85rem;
     }
     
     .report-actions {
         flex-direction: column;
         align-items: center;
         gap: 15px;
+        margin-top: 25px;
     }
     
     .btn-back, .btn-new-loan {
@@ -653,27 +968,30 @@
 
 @media (max-width: 480px) {
     .report-container {
-        padding: 10px;
+        padding: 8px;
     }
     
     .report-header {
-        padding: 15px;
+        padding: 15px 10px;
+        border-radius: 15px;
     }
     
     .report-header h1 {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
     }
     
     .report-date {
-        font-size: 1rem;
+        font-size: 0.9rem;
     }
     
     .stats-grid {
-        gap: 12px;
+        gap: 10px;
+        margin-bottom: 20px;
     }
     
     .stat-card {
-        padding: 15px;
+        padding: 15px 10px;
+        border-radius: 12px;
     }
     
     .stat-icon {
@@ -683,7 +1001,7 @@
     }
     
     .stat-content h3 {
-        font-size: 1.6rem;
+        font-size: 1.4rem;
     }
     
     .stat-content p {
@@ -691,50 +1009,211 @@
     }
     
     .payments-section {
-        padding: 15px;
+        padding: 12px;
+        margin-bottom: 15px;
+        border-radius: 15px;
     }
     
     .payments-section h2 {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+        margin-bottom: 15px;
     }
     
-    .payments-table th,
-    .payments-table td {
-        padding: 8px 6px;
+    .payment-card {
+        margin-bottom: 12px;
+        border-radius: 12px;
+    }
+    
+    .card-header {
+        padding: 12px;
+    }
+    
+    .client-info-mobile h3 {
+        font-size: 1rem;
+    }
+    
+    .client-email {
         font-size: 0.8rem;
     }
     
-    .client-info strong {
-        font-size: 0.9rem;
-    }
-    
-    .client-info small {
+    .payment-type-mobile {
+        padding: 4px 8px;
         font-size: 0.75rem;
     }
     
-    .loan-amount {
+    .card-body {
+        padding: 12px;
+    }
+    
+    .detail-row {
+        padding: 5px 0;
+    }
+    
+    .detail-label {
+        font-size: 0.8rem;
+    }
+    
+    .detail-value {
+        font-size: 0.8rem;
+    }
+    
+    .detail-value.amount {
         font-size: 0.9rem;
     }
     
-    .loan-info small {
-        font-size: 0.7rem;
-    }
-    
-    .payment-amount {
-        font-size: 0.9rem;
-    }
-    
-    .btn-view, .btn-mark-paid {
-        padding: 5px 10px;
+    .days-overdue-mobile {
+        padding: 3px 6px;
         font-size: 0.75rem;
-        min-width: 90px;
-        height: 30px;
+    }
+    
+    .card-actions {
+        padding: 12px;
+        gap: 6px;
+    }
+    
+    .btn-view-mobile, .btn-mark-paid-mobile {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+        border-radius: 8px;
+    }
+    
+    .report-actions {
+        margin-top: 20px;
+        gap: 12px;
     }
     
     .btn-back, .btn-new-loan {
         padding: 10px 20px;
         font-size: 0.85rem;
+        border-radius: 8px;
     }
+    
+    /* Mejorar las pestañas de navegación en móvil */
+    .tabs-container {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .tab-link {
+        padding: 12px;
+        gap: 10px;
+    }
+    
+    .tab-icon {
+        font-size: 1.3rem;
+        width: 35px;
+        height: 35px;
+    }
+    
+    .tab-title {
+        font-size: 0.9rem;
+    }
+    
+    .tab-subtitle {
+        font-size: 0.75rem;
+    }
+}
+
+/* Estilos adicionales para mejorar la experiencia móvil */
+@media (max-width: 768px) {
+    /* Mejorar el scroll en móviles */
+    .payments-section {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Hacer que los botones sean más fáciles de tocar */
+    .btn-view-mobile, .btn-mark-paid-mobile {
+        min-height: 44px;
+        touch-action: manipulation;
+    }
+    
+    /* Mejorar la legibilidad del texto */
+    .detail-label, .detail-value {
+        line-height: 1.4;
+    }
+    
+    /* Añadir más espacio entre elementos */
+    .payment-card {
+        margin-bottom: 16px;
+    }
+    
+    /* Mejorar el contraste en móviles */
+    .client-info-mobile h3 {
+        color: #1a1a1a;
+    }
+    
+    .detail-label {
+        color: #1a1a1a;
+    }
+}
+
+/* Animaciones suaves para móviles */
+@media (max-width: 768px) {
+    .payment-card {
+        animation: slideInUp 0.3s ease-out;
+    }
+    
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+/* Mejorar la accesibilidad en móviles */
+@media (max-width: 768px) {
+    .btn-view-mobile:focus,
+    .btn-mark-paid-mobile:focus {
+        outline: 2px solid #3498db;
+        outline-offset: 2px;
+    }
+    
+    .phone-link-mobile:focus {
+        outline: 2px solid #3498db;
+        outline-offset: 2px;
+    }
+}
+
+/* Indicador de carga */
+.loading-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-indicator p {
+    color: #2c3e50;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
 }
 
 /* Estilos mejorados para las pestañas de navegación */
@@ -912,4 +1391,70 @@
     }
 }
 </style>
+
+<script>
+// Mejorar la experiencia móvil
+document.addEventListener('DOMContentLoaded', function() {
+    // Mostrar indicador de carga al hacer clic en botones
+    const actionButtons = document.querySelectorAll('.btn-view-mobile, .btn-mark-paid-mobile');
+    actionButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            // Solo mostrar loading para enlaces, no para formularios
+            if (this.tagName === 'A') {
+                showLoading();
+            }
+        });
+    });
+    
+    // Mejorar la experiencia de scroll en móviles
+    if (window.innerWidth <= 768) {
+        // Suavizar el scroll
+        document.documentElement.style.scrollBehavior = 'smooth';
+        
+        // Mejorar el touch en botones
+        const touchButtons = document.querySelectorAll('.btn-view-mobile, .btn-mark-paid-mobile, .phone-link-mobile');
+        touchButtons.forEach(button => {
+            button.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.95)';
+            });
+            
+            button.addEventListener('touchend', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+    }
+    
+    // Animación de entrada para las tarjetas
+    const cards = document.querySelectorAll('.payment-card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+    });
+});
+
+function showLoading() {
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'flex';
+    }
+}
+
+function hideLoading() {
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+}
+
+// Ocultar loading cuando la página esté completamente cargada
+window.addEventListener('load', function() {
+    hideLoading();
+});
+
+// Mejorar la experiencia de formularios en móviles
+document.addEventListener('submit', function(e) {
+    if (e.target.classList.contains('form-mobile')) {
+        showLoading();
+    }
+});
+</script>
 {% endblock %}
