@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block content %}
 <div class="report-container">
@@ -210,10 +211,7 @@
                             </td>
                             <td>
                                 <span class="days-overdue">
-                                    {% now "Y-m-d" as today %}
-                                    {% with cuota.fecha_pago|timesince:today as days %}
-                                        {{ days|truncatewords:1 }}
-                                    {% endwith %}
+                                    {{ cuota.fecha_pago|days_overdue }}
                                 </span>
                             </td>
                             <td>

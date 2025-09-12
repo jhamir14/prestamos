@@ -51,6 +51,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'prestamos.middleware.ErrorHandlingMiddleware',
 ]
 
 ROOT_URLCONF = 'gestion_prestamos.urls'
@@ -78,22 +79,33 @@ WSGI_APPLICATION = 'gestion_prestamos.wsgi.application'
 
 # Parse database URL
 database_url = os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3')
-database_config = dj_database_url.parse(database_url)
 
-# Add connection settings only for PostgreSQL
-if database_config['ENGINE'] == 'django.db.backends.postgresql':
-    # Use psycopg3 instead of psycopg2
-    database_config['ENGINE'] = 'django.db.backends.postgresql'
-    database_config.update({
-        'CONN_MAX_AGE': 600,
-        'OPTIONS': {
-            'sslmode': 'require',
+try:
+    database_config = dj_database_url.parse(database_url)
+    
+    # Add connection settings only for PostgreSQL
+    if database_config['ENGINE'] == 'django.db.backends.postgresql':
+        # Use psycopg3 instead of psycopg2
+        database_config['ENGINE'] = 'django.db.backends.postgresql'
+        database_config.update({
+            'CONN_MAX_AGE': 600,
+            'OPTIONS': {
+                'sslmode': 'require',
+            }
+        })
+    
+    DATABASES = {
+        'default': database_config
+    }
+except Exception as e:
+    # Fallback a SQLite si hay problemas con la configuración de la base de datos
+    print(f"Error configurando base de datos: {e}")
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
-    })
-
-DATABASES = {
-    'default': database_config
-}
+    }
 
 
 # Password validation
@@ -157,3 +169,44 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': 'django_errors.log',
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file', 'console'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+        'prestamos': {
+            'handlers': ['file', 'console'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}

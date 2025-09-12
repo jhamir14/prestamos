@@ -11,12 +11,16 @@ from .forms import PrestamoForm, ClienteForm
 from .models import Prestamo, Cliente, CuotaPago
 from datetime import datetime, timedelta, date
 import calendar
+import logging
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from io import BytesIO
+
+# Configurar logger
+logger = logging.getLogger(__name__)
 # Create your views here.
 
 def home(request): 
@@ -322,54 +326,79 @@ def reporte_pagos(request):
     if not request.user.is_authenticated:
         return redirect('signin')
     
-    # Obtener la fecha actual
-    hoy = date.today()
-    
-    # Buscar cuotas que vencen hoy y no han sido pagadas (tanto diarias como semanales)
-    cuotas_vencidas_hoy = CuotaPago.objects.filter(
-        fecha_pago=hoy,
-        pagada=False
-    ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre')
-    
-    # Buscar préstamos con cuotas retrasadas (fecha de pago menor a hoy y no pagadas)
-    cuotas_retrasadas = CuotaPago.objects.filter(
-        fecha_pago__lt=hoy,
-        pagada=False
-    ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre', 'fecha_pago')
-    
-    # Calcular totales para cuotas de hoy
-    total_cuotas_hoy = cuotas_vencidas_hoy.count()
-    total_monto_hoy = sum(cuota.monto for cuota in cuotas_vencidas_hoy)
-    
-    # Calcular totales para cuotas retrasadas
-    total_cuotas_retrasadas = cuotas_retrasadas.count()
-    total_monto_retrasadas = sum(cuota.monto for cuota in cuotas_retrasadas)
-    
-    # Obtener estadísticas adicionales
-    prestamos_activos = Prestamo.objects.filter(estado=False).count()
-    prestamos_diarios_activos = Prestamo.objects.filter(forma_pago='diario', estado=False).count()
-    prestamos_semanales_activos = Prestamo.objects.filter(forma_pago='semanal', estado=False).count()
-    
-    cuotas_pagadas_hoy = CuotaPago.objects.filter(
-        fecha_pago=hoy,
-        pagada=True
-    ).count()
-    
-    context = {
-        'cuotas_vencidas_hoy': cuotas_vencidas_hoy,
-        'cuotas_retrasadas': cuotas_retrasadas,
-        'total_cuotas_hoy': total_cuotas_hoy,
-        'total_monto_hoy': total_monto_hoy,
-        'total_cuotas_retrasadas': total_cuotas_retrasadas,
-        'total_monto_retrasadas': total_monto_retrasadas,
-        'prestamos_activos': prestamos_activos,
-        'prestamos_diarios_activos': prestamos_diarios_activos,
-        'prestamos_semanales_activos': prestamos_semanales_activos,
-        'cuotas_pagadas_hoy': cuotas_pagadas_hoy,
-        'fecha_hoy': hoy,
-    }
-    
-    return render(request, 'reporte_pagos.html', context)
+    try:
+        # Obtener la fecha actual
+        hoy = date.today()
+        
+        # Inicializar variables con valores por defecto
+        cuotas_vencidas_hoy = []
+        cuotas_retrasadas = []
+        total_cuotas_hoy = 0
+        total_monto_hoy = 0
+        total_cuotas_retrasadas = 0
+        total_monto_retrasadas = 0
+        prestamos_activos = 0
+        prestamos_diarios_activos = 0
+        prestamos_semanales_activos = 0
+        cuotas_pagadas_hoy = 0
+        
+        try:
+            # Buscar cuotas que vencen hoy y no han sido pagadas (tanto diarias como semanales)
+            cuotas_vencidas_hoy = CuotaPago.objects.filter(
+                fecha_pago=hoy,
+                pagada=False
+            ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre')
+            
+            # Buscar préstamos con cuotas retrasadas (fecha de pago menor a hoy y no pagadas)
+            cuotas_retrasadas = CuotaPago.objects.filter(
+                fecha_pago__lt=hoy,
+                pagada=False
+            ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre', 'fecha_pago')
+            
+            # Calcular totales para cuotas de hoy
+            total_cuotas_hoy = cuotas_vencidas_hoy.count()
+            total_monto_hoy = sum(cuota.monto for cuota in cuotas_vencidas_hoy) if cuotas_vencidas_hoy else 0
+            
+            # Calcular totales para cuotas retrasadas
+            total_cuotas_retrasadas = cuotas_retrasadas.count()
+            total_monto_retrasadas = sum(cuota.monto for cuota in cuotas_retrasadas) if cuotas_retrasadas else 0
+            
+            # Obtener estadísticas adicionales
+            prestamos_activos = Prestamo.objects.filter(estado=False).count()
+            prestamos_diarios_activos = Prestamo.objects.filter(forma_pago='diario', estado=False).count()
+            prestamos_semanales_activos = Prestamo.objects.filter(forma_pago='semanal', estado=False).count()
+            
+            cuotas_pagadas_hoy = CuotaPago.objects.filter(
+                fecha_pago=hoy,
+                pagada=True
+            ).count()
+            
+        except Exception as e:
+            # Si hay error en las consultas, usar valores por defecto
+            logger.error(f"Error en consultas de reporte: {e}")
+            messages.warning(request, 'Hubo un problema al cargar algunos datos del reporte.')
+        
+        context = {
+            'cuotas_vencidas_hoy': cuotas_vencidas_hoy,
+            'cuotas_retrasadas': cuotas_retrasadas,
+            'total_cuotas_hoy': total_cuotas_hoy,
+            'total_monto_hoy': total_monto_hoy,
+            'total_cuotas_retrasadas': total_cuotas_retrasadas,
+            'total_monto_retrasadas': total_monto_retrasadas,
+            'prestamos_activos': prestamos_activos,
+            'prestamos_diarios_activos': prestamos_diarios_activos,
+            'prestamos_semanales_activos': prestamos_semanales_activos,
+            'cuotas_pagadas_hoy': cuotas_pagadas_hoy,
+            'fecha_hoy': hoy,
+        }
+        
+        return render(request, 'reporte_pagos.html', context)
+        
+    except Exception as e:
+        # Manejo general de errores
+        logger.error(f"Error general en reporte_pagos: {e}")
+        messages.error(request, 'Hubo un error al cargar el reporte. Por favor, inténtalo de nuevo.')
+        return redirect('index')
 
 def signin(request):
     if request.method == 'GET':
