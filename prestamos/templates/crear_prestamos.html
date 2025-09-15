@@ -1,18 +1,398 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Crear Préstamo</h1>
+<div class="container">
+    <div class="form-container">
+        <h1>Crear Préstamo</h1>
+        
+        <form method="post" class="prestamo-form">
+            {% csrf_token %}
+            
+            <!-- Campo de búsqueda de cliente -->
+            <div class="form-group">
+                <label for="cliente-busqueda">{{ form.cliente_busqueda.label }}</label>
+                {{ form.cliente_busqueda }}
+                <div id="sugerencias-cliente" class="sugerencias-container"></div>
+                {{ form.cliente }}
+            </div>
+            
+            <!-- Información del cliente seleccionado -->
+            <div id="info-cliente" class="info-cliente" style="display: none;">
+                <h3>Cliente Seleccionado</h3>
+                <div id="detalles-cliente"></div>
+            </div>
+            
+            <!-- Monto del préstamo -->
+            <div class="form-group">
+                <label for="id_monto">Monto del Préstamo (S/)</label>
+                {{ form.monto }}
+                {% if form.monto.errors %}
+                    <div class="error-message">{{ form.monto.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Fechas -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="id_fecha_prestamo">Fecha de Préstamo</label>
+                    {{ form.fecha_prestamo }}
+                    {% if form.fecha_prestamo.errors %}
+                        <div class="error-message">{{ form.fecha_prestamo.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label for="id_fecha_vencimiento">Fecha de Vencimiento</label>
+                    {{ form.fecha_vencimiento }}
+                    {% if form.fecha_vencimiento.errors %}
+                        <div class="error-message">{{ form.fecha_vencimiento.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Forma de pago -->
+            <div class="form-group">
+                <label for="id_forma_pago">Forma de Pago</label>
+                {{ form.forma_pago }}
+                {% if form.forma_pago.errors %}
+                    <div class="error-message">{{ form.forma_pago.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Botones -->
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">Crear Préstamo</button>
+                <a href="{% url 'index' %}" class="btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Crear Préstamo</button>
-</form>
+<style>
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.form-container {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.form-container h1 {
+    color: #2c3e50;
+    margin-bottom: 30px;
+    text-align: center;
+    font-size: 2rem;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e1e8ed;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.sugerencias-container {
+    position: relative;
+    z-index: 1000;
+}
+
+.sugerencias {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e1e8ed;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    display: none;
+}
+
+.sugerencia-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s ease;
+}
+
+.sugerencia-item:hover {
+    background-color: #f8f9fa;
+}
+
+.sugerencia-item:last-child {
+    border-bottom: none;
+}
+
+.sugerencia-nombre {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.sugerencia-detalles {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}
+
+.info-cliente {
+    background: #f8f9fa;
+    border: 1px solid #e1e8ed;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.info-cliente h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.cliente-detalle {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.cliente-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.cliente-label {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin-bottom: 4px;
+}
+
+.cliente-valor {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.error-message {
+    color: #e74c3c;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .form-container {
+        padding: 20px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .btn-primary, .btn-secondary {
+        width: 100%;
+        max-width: 300px;
+    }
+}
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const clienteBusquedaInput = document.getElementById('cliente-busqueda');
+    const clienteSelect = document.getElementById('id_cliente');
+    const sugerenciasContainer = document.getElementById('sugerencias-cliente');
+    const infoCliente = document.getElementById('info-cliente');
+    const detallesCliente = document.getElementById('detalles-cliente');
     const fechaPrestamoInput = document.getElementById('id_fecha_prestamo');
     const fechaVencimientoInput = document.getElementById('id_fecha_vencimiento');
+    
+    let timeoutId;
+    
+    // Función para buscar clientes
+    function buscarClientes(query) {
+        if (query.length < 2) {
+            sugerenciasContainer.innerHTML = '';
+            sugerenciasContainer.style.display = 'none';
+            return;
+        }
+        
+        fetch(`/api/buscar-clientes/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                mostrarSugerencias(data.clientes);
+            })
+            .catch(error => {
+                console.error('Error al buscar clientes:', error);
+            });
+    }
+    
+    // Función para mostrar sugerencias
+    function mostrarSugerencias(clientes) {
+        if (clientes.length === 0) {
+            sugerenciasContainer.innerHTML = '<div class="sugerencia-item">No se encontraron clientes</div>';
+        } else {
+            sugerenciasContainer.innerHTML = clientes.map(cliente => `
+                <div class="sugerencia-item" data-cliente-id="${cliente.id}">
+                    <div class="sugerencia-nombre">${cliente.nombre}</div>
+                    <div class="sugerencia-detalles">${cliente.email} - ${cliente.telefono}</div>
+                </div>
+            `).join('');
+        }
+        sugerenciasContainer.style.display = 'block';
+    }
+    
+    // Event listener para el input de búsqueda
+    clienteBusquedaInput.addEventListener('input', function() {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            buscarClientes(this.value);
+        }, 300);
+    });
+    
+    // Event listener para seleccionar una sugerencia
+    sugerenciasContainer.addEventListener('click', function(e) {
+        const sugerenciaItem = e.target.closest('.sugerencia-item');
+        if (sugerenciaItem) {
+            const clienteId = sugerenciaItem.dataset.clienteId;
+            const clienteNombre = sugerenciaItem.querySelector('.sugerencia-nombre').textContent;
+            const clienteDetalles = sugerenciaItem.querySelector('.sugerencia-detalles').textContent;
+            
+            // Seleccionar el cliente
+            clienteSelect.value = clienteId;
+            clienteBusquedaInput.value = `${clienteNombre} - ${clienteDetalles}`;
+            
+            // Ocultar sugerencias
+            sugerenciasContainer.style.display = 'none';
+            
+            // Mostrar información del cliente
+            mostrarInfoCliente(clienteId, clienteNombre, clienteDetalles);
+        }
+    });
+    
+    // Función para mostrar información del cliente
+    function mostrarInfoCliente(clienteId, nombre, detalles) {
+        fetch(`/api/buscar-clientes/?q=${encodeURIComponent(nombre)}`)
+            .then(response => response.json())
+            .then(data => {
+                const cliente = data.clientes.find(c => c.id == clienteId);
+                if (cliente) {
+                    detallesCliente.innerHTML = `
+                        <div class="cliente-detalle">
+                            <div class="cliente-item">
+                                <div class="cliente-label">Nombre:</div>
+                                <div class="cliente-valor">${cliente.nombre}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">Email:</div>
+                                <div class="cliente-valor">${cliente.email}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">Teléfono:</div>
+                                <div class="cliente-valor">${cliente.telefono}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">Dirección:</div>
+                                <div class="cliente-valor">${cliente.direccion}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">Ciudad:</div>
+                                <div class="cliente-valor">${cliente.ciudad}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">País:</div>
+                                <div class="cliente-valor">${cliente.pais}</div>
+                            </div>
+                        </div>
+                    `;
+                    infoCliente.style.display = 'block';
+                }
+            });
+    }
+    
+    // Ocultar sugerencias al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.form-group')) {
+            sugerenciasContainer.style.display = 'none';
+        }
+    });
     
     // Función para calcular la fecha de vencimiento (30 días después)
     function calcularFechaVencimiento(fechaPrestamo) {

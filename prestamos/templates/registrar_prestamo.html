@@ -17,11 +17,19 @@
         <form class="loan-form" action="/registrar-prestamo/" method="post">
             {% csrf_token %}
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="{{ form.cliente.id_for_label }}">Cliente</label>
-                    {{ form.cliente }}
-                </div>
+            <!-- Campo de búsqueda de cliente -->
+            <div class="form-group">
+                <label for="cliente-busqueda">{{ form.cliente_busqueda.label }}</label>
+                {{ form.cliente_busqueda }}
+                <div id="sugerencias-cliente" class="sugerencias-container"></div>
+                {{ form.cliente }}
+            </div>
+            
+            <!-- Información del cliente seleccionado -->
+            <div id="info-cliente" class="info-cliente" style="display: none;">
+                <h3>Cliente Seleccionado</h3>
+                <div id="detalles-cliente"></div>
+            </div>
                 
                 <div class="form-group">
                     <label for="{{ form.monto.id_for_label }}">Monto del Préstamo</label>
@@ -210,6 +218,89 @@
     margin-bottom: 5px;
 }
 
+/* Estilos para autocompletado */
+.sugerencias-container {
+    position: relative;
+    z-index: 1000;
+}
+
+.sugerencias {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e1e8ed;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    display: none;
+}
+
+.sugerencia-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s ease;
+}
+
+.sugerencia-item:hover {
+    background-color: #f8f9fa;
+}
+
+.sugerencia-item:last-child {
+    border-bottom: none;
+}
+
+.sugerencia-nombre {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.sugerencia-detalles {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}
+
+.info-cliente {
+    background: #f8f9fa;
+    border: 1px solid #e1e8ed;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.info-cliente h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.cliente-detalle {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.cliente-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.cliente-label {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin-bottom: 4px;
+}
+
+.cliente-valor {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
 @media (max-width: 768px) {
     .form-row {
         grid-template-columns: 1fr;
@@ -260,6 +351,129 @@ document.addEventListener('DOMContentLoaded', function() {
         fechaPrestamoInput.value = hoy;
         fechaVencimientoInput.value = calcularFechaVencimiento(hoy);
     }
+    
+    // Funcionalidad de autocompletado para clientes
+    const clienteBusquedaInput = document.getElementById('cliente-busqueda');
+    const clienteSelect = document.getElementById('id_cliente');
+    const sugerenciasContainer = document.getElementById('sugerencias-cliente');
+    const infoCliente = document.getElementById('info-cliente');
+    const detallesCliente = document.getElementById('detalles-cliente');
+    
+    let timeoutId;
+    
+    // Función para buscar clientes
+    function buscarClientes(query) {
+        if (query.length < 2) {
+            sugerenciasContainer.innerHTML = '';
+            sugerenciasContainer.style.display = 'none';
+            return;
+        }
+        
+        fetch(`/api/buscar-clientes/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                mostrarSugerencias(data.clientes);
+            })
+            .catch(error => {
+                console.error('Error al buscar clientes:', error);
+            });
+    }
+    
+    // Función para mostrar sugerencias
+    function mostrarSugerencias(clientes) {
+        if (clientes.length === 0) {
+            sugerenciasContainer.innerHTML = '<div class="sugerencia-item">No se encontraron clientes</div>';
+        } else {
+            sugerenciasContainer.innerHTML = clientes.map(cliente => `
+                <div class="sugerencia-item" data-cliente-id="${cliente.id}">
+                    <div class="sugerencia-nombre">${cliente.nombre}</div>
+                    <div class="sugerencia-detalles">${cliente.email} - ${cliente.telefono}</div>
+                </div>
+            `).join('');
+        }
+        sugerenciasContainer.style.display = 'block';
+    }
+    
+    // Event listener para el input de búsqueda
+    if (clienteBusquedaInput) {
+        clienteBusquedaInput.addEventListener('input', function() {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                buscarClientes(this.value);
+            }, 300);
+        });
+    }
+    
+    // Event listener para seleccionar una sugerencia
+    if (sugerenciasContainer) {
+        sugerenciasContainer.addEventListener('click', function(e) {
+            const sugerenciaItem = e.target.closest('.sugerencia-item');
+            if (sugerenciaItem) {
+                const clienteId = sugerenciaItem.dataset.clienteId;
+                const clienteNombre = sugerenciaItem.querySelector('.sugerencia-nombre').textContent;
+                const clienteDetalles = sugerenciaItem.querySelector('.sugerencia-detalles').textContent;
+                
+                // Seleccionar el cliente
+                clienteSelect.value = clienteId;
+                clienteBusquedaInput.value = `${clienteNombre} - ${clienteDetalles}`;
+                
+                // Ocultar sugerencias
+                sugerenciasContainer.style.display = 'none';
+                
+                // Mostrar información del cliente
+                mostrarInfoCliente(clienteId, clienteNombre, clienteDetalles);
+            }
+        });
+    }
+    
+    // Función para mostrar información del cliente
+    function mostrarInfoCliente(clienteId, nombre, detalles) {
+        fetch(`/api/buscar-clientes/?q=${encodeURIComponent(nombre)}`)
+            .then(response => response.json())
+            .then(data => {
+                const cliente = data.clientes.find(c => c.id == clienteId);
+                if (cliente) {
+                    detallesCliente.innerHTML = `
+                        <div class="cliente-detalle">
+                            <div class="cliente-item">
+                                <div class="cliente-label">Nombre:</div>
+                                <div class="cliente-valor">${cliente.nombre}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">Email:</div>
+                                <div class="cliente-valor">${cliente.email}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">Teléfono:</div>
+                                <div class="cliente-valor">${cliente.telefono}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">Dirección:</div>
+                                <div class="cliente-valor">${cliente.direccion}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">Ciudad:</div>
+                                <div class="cliente-valor">${cliente.ciudad}</div>
+                            </div>
+                            <div class="cliente-item">
+                                <div class="cliente-label">País:</div>
+                                <div class="cliente-valor">${cliente.pais}</div>
+                            </div>
+                        </div>
+                    `;
+                    infoCliente.style.display = 'block';
+                }
+            });
+    }
+    
+    // Ocultar sugerencias al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.form-group')) {
+            if (sugerenciasContainer) {
+                sugerenciasContainer.style.display = 'none';
+            }
+        }
+    });
 });
 </script>
 {% endblock %}

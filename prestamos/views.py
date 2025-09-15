@@ -1,17 +1,21 @@
 from django.shortcuts import render
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth import logout
 from django.contrib.auth import authenticate
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from .forms import PrestamoForm, ClienteForm
 from .models import Prestamo, Cliente, CuotaPago
+from django.db import models
 from datetime import datetime, timedelta, date
 import calendar
 import logging
+import json
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -86,9 +90,10 @@ def crear_prestamo(request):
                 prestamo = form.save()
                 # Generar cuotas automáticamente
                 prestamo.generar_cuotas()
-                messages.success(request, f'Préstamo de ${prestamo.monto} creado exitosamente para {prestamo.cliente.nombre}. Se han generado las cuotas automáticamente.')
+                messages.success(request, f'Préstamo de S/ {prestamo.monto} creado exitosamente para {prestamo.cliente.nombre}. Se han generado las cuotas automáticamente.')
                 return redirect('index')
             except Exception as e:
+                logger.error(f"Error al crear préstamo: {e}")
                 return render(request, 'crear_prestamos.html', {
                     "form": form, 
                     "error": "Error al crear el préstamo. Inténtalo de nuevo."
@@ -563,4 +568,40 @@ def descargar_calendario_pdf(request, prestamo_id):
     response['Content-Disposition'] = f'attachment; filename="calendario_pagos_{prestamo.cliente.nombre}_{prestamo.fecha_prestamo.strftime("%Y%m%d")}.pdf"'
     
     return response
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def buscar_clientes(request):
+    """API endpoint para buscar clientes con autocompletado"""
+    try:
+        query = request.GET.get('q', '').strip()
+        
+        if len(query) < 2:
+            return JsonResponse({'clientes': []})
+        
+        # Buscar clientes que coincidan con el nombre o email
+        clientes = Cliente.objects.filter(
+            models.Q(nombre__icontains=query) | 
+            models.Q(email__icontains=query) |
+            models.Q(telefono__icontains=query)
+        )[:10]  # Limitar a 10 resultados
+        
+        resultados = []
+        for cliente in clientes:
+            resultados.append({
+                'id': cliente.id,
+                'nombre': cliente.nombre,
+                'email': cliente.email,
+                'telefono': cliente.telefono,
+                'direccion': cliente.direccion,
+                'ciudad': cliente.ciudad,
+                'pais': cliente.pais,
+                'texto_completo': f"{cliente.nombre} - {cliente.email} - {cliente.telefono}"
+            })
+        
+        return JsonResponse({'clientes': resultados})
+        
+    except Exception as e:
+        logger.error(f"Error en búsqueda de clientes: {e}")
+        return JsonResponse({'error': 'Error interno del servidor'}, status=500)
     

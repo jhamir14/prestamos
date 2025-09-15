@@ -34,6 +34,7 @@ urlpatterns = [
     path('cancelar-prestamo/<int:prestamo_id>/', views.cancelar_prestamo, name='cancelar_prestamo'),
     path('marcar-cuota-pagada/<int:cuota_id>/', views.marcar_cuota_pagada, name='marcar_cuota_pagada'),
     path('reporte-pagos/', views.reporte_pagos, name='reporte_pagos'),
+    path('api/buscar-clientes/', views.buscar_clientes, name='buscar_clientes'),
     path('logout/', views.signout, name='logout'),
     path('signin/', views.signin, name='signin'),
 ]
