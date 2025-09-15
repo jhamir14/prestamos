@@ -1,28 +1,21 @@
 services:
   - type: web
-    name: gestion-prestamos
+    name: prestamos
     env: python
     plan: free
-    buildCommand: "./build.sh"
-    startCommand: "gunicorn gestion_prestamos.wsgi:application"
+    buildCommand: ./build_render_final.sh
+    startCommand: gunicorn gestion_prestamos.wsgi:application
+    healthCheckPath: /
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dbprestamos
+          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
-        value: "False"
+        value: False
       - key: ALLOWED_HOSTS
-        value: "gestion-prestamos.onrender.com"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: prestamos-postgresql-db
-          property: connectionString
+        value: prestamos-jrnd.onrender.com
       - key: CSRF_TRUSTED_ORIGINS
-        value: "https://gestion-prestamos.onrender.com"
-    healthCheckPath: "/"
-
-  - type: pserv
-    name: prestamos-postgresql-db
-    env: python
-    plan: free
-    databaseName: dbprestamos
-    databaseUser: userprestamos
+        value: https://prestamos-jrnd.onrender.com

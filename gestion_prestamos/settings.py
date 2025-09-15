@@ -85,7 +85,7 @@ try:
     
     # Add connection settings only for PostgreSQL
     if database_config['ENGINE'] == 'django.db.backends.postgresql':
-        # Use psycopg3 instead of psycopg2
+        # Use psycopg2-binary for Render compatibility
         database_config['ENGINE'] = 'django.db.backends.postgresql'
         database_config.update({
             'CONN_MAX_AGE': 600,
@@ -97,9 +97,11 @@ try:
     DATABASES = {
         'default': database_config
     }
+    print(f"✅ Base de datos configurada: {database_config['ENGINE']}")
 except Exception as e:
     # Fallback a SQLite si hay problemas con la configuración de la base de datos
-    print(f"Error configurando base de datos: {e}")
+    print(f"⚠️ Error configurando base de datos: {e}")
+    print("🔄 Usando SQLite como fallback")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
