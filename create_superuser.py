@@ -26,15 +26,15 @@ def create_superuser():
     # Crear superusuario
     try:
         user = User.objects.create_superuser(
-            username='admin',
+            username='jhamir14',
             email='admin@example.com',
-            password='admin123'
+            password='jhamirquispe'
         )
         print("✅ Superusuario creado exitosamente!")
-        print("📧 Usuario: admin")
+        print("📧 Usuario: jhamir14")
         print("📧 Email: admin@example.com")
-        print("🔑 Contraseña: admin123")
-        print("🌐 Accede al admin en: https://tu-dominio.onrender.com/admin/")
+        print("🔑 Contraseña: jhamirquispe")
+        print("🌐 Accede al admin en: https://prestamos-jrnd.onrender.com/admin/")
         
     except Exception as e:
         print(f"❌ Error creando superusuario: {e}")

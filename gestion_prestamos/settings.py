@@ -147,6 +147,11 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Configuración para archivos estáticos adicionales
+STATICFILES_DIRS = [
+    BASE_DIR / 'IMG',  # Carpeta para imágenes
+]
+
 # WhiteNoise configuration
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 

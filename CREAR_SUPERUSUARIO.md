@@ -6,8 +6,8 @@
 
 Tu aplicación ya está configurada para crear automáticamente el superusuario durante el despliegue. Las credenciales son:
 
-- **Usuario**: `admin`
-- **Contraseña**: `admin123`
+- **Usuario**: `jhamir14`
+- **Contraseña**: `jhamirquispe`
 - **Email**: `admin@example.com`
 
 ### **Método 2: Shell de Render**
@@ -34,15 +34,15 @@ En el Shell de Render:
 python manage.py shell -c "
 from django.contrib.auth import get_user_model
 User = get_user_model()
-User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
+User.objects.create_superuser('jhamir14', 'admin@example.com', 'jhamirquispe')
 print('Superusuario creado!')
 "
 ```
 
 ## 📋 Credenciales del Superusuario
 
-- **Usuario**: `admin`
-- **Contraseña**: `admin123`
+- **Usuario**: `jhamir14`
+- **Contraseña**: `jhamirquispe`
 - **Email**: `admin@example.com`
 - **URL del Admin**: `https://prestamos-jrnd.onrender.com/admin/`
 
@@ -60,7 +60,7 @@ Si quieres cambiar la contraseña del superusuario:
 python manage.py shell -c "
 from django.contrib.auth import get_user_model
 User = get_user_model()
-user = User.objects.get(username='admin')
+user = User.objects.get(username='jhamir14')
 user.set_password('nueva_contraseña')
 user.save()
 print('Contraseña actualizada!')

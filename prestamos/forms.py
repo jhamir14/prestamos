@@ -43,6 +43,11 @@ class PrestamoForm(ModelForm):
             self.fields['fecha_prestamo'].initial = fecha_actual
             self.fields['fecha_vencimiento'].initial = fecha_vencimiento
         
+        # Agregar ayuda para los campos
+        self.fields['fecha_vencimiento'].help_text = "El número de cuotas se calculará automáticamente según esta fecha y la modalidad de pago. El interés se calcula progresivamente: 20% por cada mes."
+        self.fields['forma_pago'].help_text = "Diario: Se calculan cuotas de lunes a sábado. Semanal: Se calculan cuotas cada 7 días"
+        self.fields['monto'].help_text = "Monto base del préstamo. El interés se aplica progresivamente: 20% por el primer mes, 40% por dos meses, 60% por tres meses, etc."
+        
         # Si hay un cliente seleccionado, mostrar su información en el campo de búsqueda
         if self.instance.pk and self.instance.cliente:
             self.fields['cliente_busqueda'].initial = f"{self.instance.cliente.nombre} - {self.instance.cliente.email} - {self.instance.cliente.telefono}"

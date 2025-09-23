@@ -51,6 +51,38 @@
             <div class="form-group">
                 <label for="{{ form.forma_pago.id_for_label }}">Forma de Pago</label>
                 {{ form.forma_pago }}
+                <small class="form-help">{{ form.forma_pago.help_text }}</small>
+            </div>
+            
+            <!-- Calculadora de cuotas -->
+            <div id="calculadora-cuotas" class="calculadora-container" style="display: none;">
+                <h3>📊 Resumen del Préstamo</h3>
+                <div class="resumen-grid">
+                    <div class="resumen-item">
+                        <span class="label">Monto Base:</span>
+                        <span id="monto-base" class="valor">S/ 0.00</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Interés (20%):</span>
+                        <span id="interes" class="valor">S/ 0.00</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Monto Total:</span>
+                        <span id="monto-total" class="valor destacado">S/ 0.00</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Días Totales:</span>
+                        <span id="dias-totales" class="valor">0 días</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Número de Cuotas:</span>
+                        <span id="numero-cuotas" class="valor destacado">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Monto por Cuota:</span>
+                        <span id="monto-cuota" class="valor destacado">S/ 0.00</span>
+                    </div>
+                </div>
             </div>
             
             {% if form.errors %}
@@ -474,6 +506,186 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .error-message {
+        color: #dc3545;
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+    
+    .form-help {
+        color: #6c757d;
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+        display: block;
+    }
+    
+    .calculadora-container {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px solid #dee2e6;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .calculadora-container h3 {
+        color: #495057;
+        margin-bottom: 15px;
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    .resumen-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+    
+    .resumen-item {
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        border-left: 4px solid #007bff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .resumen-item .label {
+        font-weight: 500;
+        color: #495057;
+        font-size: 0.9em;
+    }
+    
+    .resumen-item .valor {
+        font-weight: 600;
+        color: #28a745;
+        font-size: 1em;
+    }
+    
+    .resumen-item .valor.destacado {
+        color: #007bff;
+        font-size: 1.1em;
+    }
+</style>
+
+<script>
+    $(document).ready(function() {
+        $('#id_cliente_busqueda').autocomplete({
+            source: function(request, response) {
+                $.ajax({
+                    url: "{% url 'buscar_clientes' %}",
+                    data: {
+                        'term': request.term
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 2,
+            select: function(event, ui) {
+                $('#id_cliente').val(ui.item.id);
+                return false;
+            }
+        });
+        
+        // Función para calcular meses totales
+        function calcularMesesTotales(fechaInicio, fechaFin) {
+            const diffYears = fechaFin.getFullYear() - fechaInicio.getFullYear();
+            const diffMonths = fechaFin.getMonth() - fechaInicio.getMonth();
+            let totalMonths = diffYears * 12 + diffMonths;
+            
+            // Si el día de vencimiento es mayor al día de inicio, cuenta como mes completo
+            if (fechaFin.getDate() > fechaInicio.getDate()) {
+                totalMonths += 1;
+            }
+            // Si es el mismo día o menor, pero hay diferencia de días significativa (>15), cuenta como mes adicional
+            else if (fechaFin.getDate() <= fechaInicio.getDate()) {
+                const diasEnMesActual = Math.ceil((fechaFin - new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaInicio.getDate())) / (1000 * 60 * 60 * 24));
+                if (diasEnMesActual > 15) {
+                    totalMonths += 1;
+                }
+            }
+            
+            return Math.max(1, totalMonths); // Mínimo 1 mes
+        }
+
+        // Función para calcular cuotas
+        function calcularCuotas() {
+            const monto = parseFloat($('#id_monto').val()) || 0;
+            const fechaPrestamo = $('#id_fecha_prestamo').val();
+            const fechaVencimiento = $('#id_fecha_vencimiento').val();
+            const formaPago = $('#id_forma_pago').val();
+            
+            if (monto > 0 && fechaPrestamo && fechaVencimiento && formaPago) {
+                const fechaInicio = new Date(fechaPrestamo);
+                const fechaFin = new Date(fechaVencimiento);
+                
+                if (fechaFin <= fechaInicio) {
+                    $('#calculadora-cuotas').hide();
+                    return;
+                }
+                
+                // Calcular días totales
+                const diasTotales = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24));
+                
+                // Calcular número de cuotas según forma de pago
+                let numeroCuotas;
+                if (formaPago === 'diario') {
+                    // Solo días laborables (lunes a sábado)
+                    let diasLaborables = 0;
+                    let fechaActual = new Date(fechaInicio);
+                    fechaActual.setDate(fechaActual.getDate() + 1); // Empezar desde el día siguiente
+                    
+                    while (fechaActual <= fechaFin) {
+                        const diaSemana = fechaActual.getDay();
+                        if (diaSemana !== 0) { // 0 = domingo
+                            diasLaborables++;
+                        }
+                        fechaActual.setDate(fechaActual.getDate() + 1);
+                    }
+                    numeroCuotas = diasLaborables;
+                } else { // semanal
+                    numeroCuotas = Math.ceil(diasTotales / 7);
+                }
+                
+                // Calcular montos con interés progresivo
+                const montoBase = monto;
+                const mesesTotales = calcularMesesTotales(fechaInicio, fechaFin);
+                const porcentajeInteres = 0.20 * mesesTotales; // 20% por cada mes
+                const interes = monto * porcentajeInteres;
+                const montoTotal = montoBase + interes;
+                const montoPorCuota = numeroCuotas > 0 ? montoTotal / numeroCuotas : 0;
+                
+                // Actualizar valores en la interfaz
+                $('#monto-base').text('S/ ' + montoBase.toFixed(2));
+                $('#interes').text('S/ ' + interes.toFixed(2) + ' (' + (porcentajeInteres * 100).toFixed(0) + '% - ' + mesesTotales + ' ' + (mesesTotales === 1 ? 'mes' : 'meses') + ')');
+                $('#monto-total').text('S/ ' + montoTotal.toFixed(2));
+                $('#dias-totales').text(diasTotales + ' días');
+                $('#numero-cuotas').text(numeroCuotas);
+                $('#monto-cuota').text('S/ ' + montoPorCuota.toFixed(2));
+                
+                $('#calculadora-cuotas').show();
+            } else {
+                $('#calculadora-cuotas').hide();
+            }
+        }
+        
+        // Event listeners para recalcular automáticamente
+        $('#id_monto, #id_forma_pago').on('input change', calcularCuotas);
+        $('#id_fecha_prestamo, #id_fecha_vencimiento').on('change', calcularCuotas);
+        
+        // Calcular al cargar la página si hay valores
+        calcularCuotas();
+    });
 </script>
 {% endblock %}
 

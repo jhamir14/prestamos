@@ -54,9 +54,41 @@
             <div class="form-group">
                 <label for="id_forma_pago">Forma de Pago</label>
                 {{ form.forma_pago }}
+                <small class="form-help">{{ form.forma_pago.help_text }}</small>
                 {% if form.forma_pago.errors %}
                     <div class="error-message">{{ form.forma_pago.errors.0 }}</div>
                 {% endif %}
+            </div>
+            
+            <!-- Calculadora de cuotas -->
+            <div id="calculadora-cuotas" class="calculadora-container" style="display: none;">
+                <h3>📊 Resumen del Préstamo</h3>
+                <div class="resumen-grid">
+                    <div class="resumen-item">
+                        <span class="label">Monto Base:</span>
+                        <span id="monto-base" class="valor">S/ 0.00</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Interés (20%):</span>
+                        <span id="interes" class="valor">S/ 0.00</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Monto Total:</span>
+                        <span id="monto-total" class="valor destacado">S/ 0.00</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Días Totales:</span>
+                        <span id="dias-totales" class="valor">0 días</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Número de Cuotas:</span>
+                        <span id="numero-cuotas" class="valor destacado">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Monto por Cuota:</span>
+                        <span id="monto-cuota" class="valor destacado">S/ 0.00</span>
+                    </div>
+                </div>
             </div>
             
             <!-- Botones -->
@@ -207,6 +239,72 @@
     color: #e74c3c;
     font-size: 0.9rem;
     margin-top: 5px;
+    padding: 10px;
+    background-color: #fdf2f2;
+    border: 1px solid #fecaca;
+    border-radius: 5px;
+}
+
+.form-help {
+    display: block;
+    color: #6c757d;
+    font-size: 0.8rem;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+.calculadora-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #dee2e6;
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.calculadora-container h3 {
+    color: #495057;
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.resumen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.resumen-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: white;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.resumen-item .label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.resumen-item .valor {
+    font-weight: 700;
+    color: #28a745;
+    font-size: 1rem;
+}
+
+.resumen-item .valor.destacado {
+    color: #007bff;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .form-actions {
@@ -404,6 +502,96 @@ document.addEventListener('DOMContentLoaded', function() {
         return '';
     }
     
+    // Función para calcular meses totales
+    function calcularMesesTotales(fechaInicio, fechaFin) {
+        const diffYears = fechaFin.getFullYear() - fechaInicio.getFullYear();
+        const diffMonths = fechaFin.getMonth() - fechaInicio.getMonth();
+        let totalMonths = diffYears * 12 + diffMonths;
+        
+        // Si el día de vencimiento es mayor al día de inicio, cuenta como mes completo
+        if (fechaFin.getDate() > fechaInicio.getDate()) {
+            totalMonths += 1;
+        }
+        // Si es el mismo día o menor, pero hay diferencia de días significativa (>15), cuenta como mes adicional
+        else if (fechaFin.getDate() <= fechaInicio.getDate()) {
+            const diasEnMesActual = Math.ceil((fechaFin - new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaInicio.getDate())) / (1000 * 60 * 60 * 24));
+            if (diasEnMesActual > 15) {
+                totalMonths += 1;
+            }
+        }
+        
+        return Math.max(1, totalMonths); // Mínimo 1 mes
+    }
+
+    // Función para calcular cuotas automáticamente
+    function calcularCuotas() {
+        const monto = parseFloat(document.getElementById('id_monto').value) || 0;
+        const fechaPrestamo = document.getElementById('id_fecha_prestamo').value;
+        const fechaVencimiento = document.getElementById('id_fecha_vencimiento').value;
+        const formaPago = document.getElementById('id_forma_pago').value;
+        
+        if (monto > 0 && fechaPrestamo && fechaVencimiento) {
+            const fechaInicio = new Date(fechaPrestamo);
+            const fechaFin = new Date(fechaVencimiento);
+            
+            if (fechaFin > fechaInicio) {
+                const diasTotales = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24));
+                
+                // Calcular interés progresivo por meses
+                const mesesTotales = calcularMesesTotales(fechaInicio, fechaFin);
+                const porcentajeInteres = 0.20 * mesesTotales; // 20% por cada mes
+                const interes = monto * porcentajeInteres;
+                const montoTotal = monto + interes;
+                
+                let numeroCuotas = 0;
+                
+                if (formaPago === 'diario') {
+                    // Contar días laborables (lunes a sábado)
+                    let currentDate = new Date(fechaInicio);
+                    currentDate.setDate(currentDate.getDate() + 1); // Empezar al día siguiente
+                    
+                    while (currentDate <= fechaFin) {
+                        if (currentDate.getDay() >= 1 && currentDate.getDay() <= 6) { // Lunes a sábado
+                            numeroCuotas++;
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                } else { // semanal
+                    numeroCuotas = Math.max(1, Math.floor(diasTotales / 7));
+                }
+                
+                const montoPorCuota = numeroCuotas > 0 ? montoTotal / numeroCuotas : 0;
+                
+                // Actualizar la interfaz
+                document.getElementById('monto-base').textContent = `S/ ${monto.toFixed(2)}`;
+                document.getElementById('interes').textContent = `S/ ${interes.toFixed(2)} (${(porcentajeInteres * 100).toFixed(0)}% - ${mesesTotales} ${mesesTotales === 1 ? 'mes' : 'meses'})`;
+                document.getElementById('monto-total').textContent = `S/ ${montoTotal.toFixed(2)}`;
+                document.getElementById('dias-totales').textContent = `${diasTotales} días`;
+                document.getElementById('numero-cuotas').textContent = numeroCuotas;
+                document.getElementById('monto-cuota').textContent = `S/ ${montoPorCuota.toFixed(2)}`;
+                
+                // Mostrar la calculadora
+                document.getElementById('calculadora-cuotas').style.display = 'block';
+            } else {
+                document.getElementById('calculadora-cuotas').style.display = 'none';
+            }
+        } else {
+            document.getElementById('calculadora-cuotas').style.display = 'none';
+        }
+    }
+    
+    // Agregar event listeners para recalcular automáticamente
+    const montoInput = document.getElementById('id_monto');
+    const formaPagoSelect = document.getElementById('id_forma_pago');
+    
+    if (montoInput) {
+        montoInput.addEventListener('input', calcularCuotas);
+    }
+    
+    if (formaPagoSelect) {
+        formaPagoSelect.addEventListener('change', calcularCuotas);
+    }
+    
     // Actualizar fecha de vencimiento cuando cambie la fecha de préstamo
     if (fechaPrestamoInput && fechaVencimientoInput) {
         fechaPrestamoInput.addEventListener('change', function() {
@@ -411,7 +599,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (nuevaFechaVencimiento) {
                 fechaVencimientoInput.value = nuevaFechaVencimiento;
             }
+            calcularCuotas(); // Recalcular cuotas
         });
+        
+        fechaVencimientoInput.addEventListener('change', calcularCuotas);
         
         // Establecer fechas iniciales si están vacías
         if (!fechaPrestamoInput.value) {
@@ -419,6 +610,9 @@ document.addEventListener('DOMContentLoaded', function() {
             fechaPrestamoInput.value = hoy;
             fechaVencimientoInput.value = calcularFechaVencimiento(hoy);
         }
+        
+        // Calcular cuotas iniciales si hay valores
+        calcularCuotas();
     }
 });
 </script>
