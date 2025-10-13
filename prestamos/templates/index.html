@@ -109,7 +109,7 @@
                     </div>
                     <div class="loan-details">
                         <p><strong>Monto Original:</strong> S/{{ prestamo.monto }}</p>
-                        <p><strong>Monto Total (20% interés):</strong> S/{{ prestamo.monto_total|floatformat:2 }}</p>
+                        <p><strong>Monto Total (interés quincenal):</strong> S/{{ prestamo.monto_total|floatformat:2 }}</p>
                         <p><strong>Cuota:</strong> 
                             {% if prestamo.forma_pago == 'diario' %}
                                 S/{{ prestamo.cuota_diaria|floatformat:2 }} diaria

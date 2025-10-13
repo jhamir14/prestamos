@@ -36,43 +36,35 @@ def probar_escenarios():
     
     escenarios = [
         {
-            'nombre': 'Préstamo de 15 días (menos de 1 mes)',
+            'nombre': 'Préstamo de 15 días (1 quincena)',
             'monto': 500,
             'fecha_prestamo': fecha_base,
             'fecha_vencimiento': fecha_base + timedelta(days=15),
-            'esperado_meses': 1,
-            'esperado_interes_porcentaje': 20
+            'esperado_quincenas': 1,
+            'esperado_interes_porcentaje': 10
         },
         {
-            'nombre': 'Préstamo de 1 mes exacto',
+            'nombre': 'Préstamo de 30 días (2 quincenas)',
             'monto': 1000,
             'fecha_prestamo': fecha_base,
             'fecha_vencimiento': fecha_base + timedelta(days=30),
-            'esperado_meses': 1,
+            'esperado_quincenas': 2,
             'esperado_interes_porcentaje': 20
         },
         {
-            'nombre': 'Préstamo de 2 meses',
-            'monto': 100,
-            'fecha_prestamo': fecha_base,
-            'fecha_vencimiento': fecha_base + timedelta(days=60),
-            'esperado_meses': 2,
-            'esperado_interes_porcentaje': 40
-        },
-        {
-            'nombre': 'Préstamo de 3 meses',
-            'monto': 200,
-            'fecha_prestamo': fecha_base,
-            'fecha_vencimiento': fecha_base + timedelta(days=90),
-            'esperado_meses': 3,
-            'esperado_interes_porcentaje': 60
-        },
-        {
-            'nombre': 'Préstamo de 45 días (1.5 meses)',
+            'nombre': 'Préstamo de 45 días (3 quincenas)',
             'monto': 300,
             'fecha_prestamo': fecha_base,
             'fecha_vencimiento': fecha_base + timedelta(days=45),
-            'esperado_meses': 2,
+            'esperado_quincenas': 3,
+            'esperado_interes_porcentaje': 30
+        },
+        {
+            'nombre': 'Préstamo de 60 días (4 quincenas)',
+            'monto': 100,
+            'fecha_prestamo': fecha_base,
+            'fecha_vencimiento': fecha_base + timedelta(days=60),
+            'esperado_quincenas': 4,
             'esperado_interes_porcentaje': 40
         }
     ]
@@ -95,21 +87,21 @@ def probar_escenarios():
         )
         
         # Calcular valores
-        meses_calculados = prestamo.meses_totales
+        quincenas_calculadas = prestamo.quincenas_totales
         porcentaje_interes = prestamo.porcentaje_interes_total
         monto_interes = prestamo.monto_interes
         monto_total = prestamo.monto_total
-        
-        print(f"   Meses calculados: {meses_calculados}")
+
+        print(f"   Quincenas calculadas: {quincenas_calculadas}")
         print(f"   Porcentaje de interés: {porcentaje_interes * 100:.0f}%")
         print(f"   Monto de interés: S/ {monto_interes:.2f}")
         print(f"   Monto total: S/ {monto_total:.2f}")
         
         # Verificar resultados
-        if meses_calculados == escenario['esperado_meses']:
-            print("   ✅ Cálculo de meses CORRECTO")
+        if quincenas_calculadas == escenario['esperado_quincenas']:
+            print("   ✅ Cálculo de quincenas CORRECTO")
         else:
-            print(f"   ❌ Cálculo de meses INCORRECTO (esperado: {escenario['esperado_meses']})")
+            print(f"   ❌ Cálculo de quincenas INCORRECTO (esperado: {escenario['esperado_quincenas']})")
         
         if abs(porcentaje_interes * 100 - escenario['esperado_interes_porcentaje']) < 0.01:
             print("   ✅ Porcentaje de interés CORRECTO")

@@ -69,7 +69,7 @@
                         <span id="monto-base" class="valor">S/ 0.00</span>
                     </div>
                     <div class="resumen-item">
-                        <span class="label">Interés (20%):</span>
+                        <span class="label">Interés (quincenal):</span>
                         <span id="interes" class="valor">S/ 0.00</span>
                     </div>
                     <div class="resumen-item">
@@ -502,25 +502,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return '';
     }
     
-    // Función para calcular meses totales
-    function calcularMesesTotales(fechaInicio, fechaFin) {
-        const diffYears = fechaFin.getFullYear() - fechaInicio.getFullYear();
-        const diffMonths = fechaFin.getMonth() - fechaInicio.getMonth();
-        let totalMonths = diffYears * 12 + diffMonths;
-        
-        // Si el día de vencimiento es mayor al día de inicio, cuenta como mes completo
-        if (fechaFin.getDate() > fechaInicio.getDate()) {
-            totalMonths += 1;
-        }
-        // Si es el mismo día o menor, pero hay diferencia de días significativa (>15), cuenta como mes adicional
-        else if (fechaFin.getDate() <= fechaInicio.getDate()) {
-            const diasEnMesActual = Math.ceil((fechaFin - new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaInicio.getDate())) / (1000 * 60 * 60 * 24));
-            if (diasEnMesActual > 15) {
-                totalMonths += 1;
-            }
-        }
-        
-        return Math.max(1, totalMonths); // Mínimo 1 mes
+    // Función para calcular quincenas totales (cada 15 días)
+    function calcularQuincenasTotales(fechaInicio, fechaFin) {
+        const diasTotales = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24));
+        const quincenas = Math.ceil(diasTotales / 15);
+        return Math.max(1, quincenas); // Mínimo 1 quincena
     }
 
     // Función para calcular cuotas automáticamente
@@ -537,9 +523,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (fechaFin > fechaInicio) {
                 const diasTotales = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24));
                 
-                // Calcular interés progresivo por meses
-                const mesesTotales = calcularMesesTotales(fechaInicio, fechaFin);
-                const porcentajeInteres = 0.20 * mesesTotales; // 20% por cada mes
+                // Calcular interés progresivo por quincenas
+                const quincenasTotales = calcularQuincenasTotales(fechaInicio, fechaFin);
+                const porcentajeInteres = 0.10 * quincenasTotales; // 10% por cada quincena
                 const interes = monto * porcentajeInteres;
                 const montoTotal = monto + interes;
                 
@@ -564,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Actualizar la interfaz
                 document.getElementById('monto-base').textContent = `S/ ${monto.toFixed(2)}`;
-                document.getElementById('interes').textContent = `S/ ${interes.toFixed(2)} (${(porcentajeInteres * 100).toFixed(0)}% - ${mesesTotales} ${mesesTotales === 1 ? 'mes' : 'meses'})`;
+                document.getElementById('interes').textContent = `S/ ${interes.toFixed(2)} (${(porcentajeInteres * 100).toFixed(0)}% - ${quincenasTotales} ${quincenasTotales === 1 ? 'quincena' : 'quincenas'})`;
                 document.getElementById('monto-total').textContent = `S/ ${montoTotal.toFixed(2)}`;
                 document.getElementById('dias-totales').textContent = `${diasTotales} días`;
                 document.getElementById('numero-cuotas').textContent = numeroCuotas;

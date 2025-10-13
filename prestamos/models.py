@@ -61,10 +61,10 @@ class Prestamo(models.Model):
     
     @property
     def porcentaje_interes_total(self):
-        """Calcula el porcentaje total de interés basado en los meses"""
-        meses = self.meses_totales
-        # 20% por el primer mes + 20% por cada mes adicional
-        return Decimal('0.20') * meses
+        """Calcula el porcentaje total de interés basado en quincenas (15 días)"""
+        quincenas = self.quincenas_totales
+        # 10% por cada quincena (15 días)
+        return Decimal('0.10') * quincenas
     
     @property
     def monto_interes(self):
@@ -73,13 +73,20 @@ class Prestamo(models.Model):
     
     @property
     def monto_total(self):
-        """Calcula el monto total con interés progresivo por meses"""
+        """Calcula el monto total con interés progresivo por quincenas"""
         return self.monto + self.monto_interes
     
     @property
     def dias_totales(self):
         """Calcula los días totales entre fecha de préstamo y vencimiento"""
         return (self.fecha_vencimiento - self.fecha_prestamo).days
+
+    @property
+    def quincenas_totales(self):
+        """Calcula el número de quincenas (periodos de 15 días) entre préstamo y vencimiento"""
+        from math import ceil
+        dias = max(0, self.dias_totales)
+        return max(1, ceil(dias / 15))
     
     @property
     def numero_cuotas(self):
