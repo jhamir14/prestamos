@@ -68,7 +68,7 @@ DATABASES = {
         'USER': os.environ.get('DB_USER', 'jhamir'),
         'PASSWORD': os.environ.get('DB_PASSWORD', '261401'),
         'HOST': 'localhost',
-        'PORT': os.environ.get('DB_PORT', '3306'),
+        'PORT': os.environ.get('DB_PORT', '3307'),
         'CONN_MAX_AGE': 300,
         'OPTIONS': {
             'charset': 'utf8mb4',
