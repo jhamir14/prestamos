@@ -509,6 +509,25 @@ document.addEventListener('DOMContentLoaded', function() {
         return Math.max(1, quincenas); // Mínimo 1 quincena
     }
 
+    // Calcular días laborables (lunes a sábado) sin bucles
+    function contarDiasLaborables(fechaInicio, fechaFin) {
+        if (fechaFin <= fechaInicio) return 0;
+        const MS_DIA = 1000 * 60 * 60 * 24;
+        const totalDias = Math.ceil((fechaFin - fechaInicio) / MS_DIA);
+        const inicio = new Date(fechaInicio);
+        inicio.setDate(inicio.getDate() + 1); // contar desde el día siguiente
+        const diaInicio = inicio.getDay(); // 0=domingo
+        const deltaPrimerDomingo = (7 - diaInicio) % 7; // días hasta domingo
+        const primerDomingo = new Date(inicio);
+        primerDomingo.setDate(primerDomingo.getDate() + deltaPrimerDomingo);
+        let domingos = 0;
+        if (primerDomingo <= fechaFin) {
+            const diasEntre = Math.floor((fechaFin - primerDomingo) / MS_DIA);
+            domingos = Math.floor(diasEntre / 7) + 1;
+        }
+        return Math.max(0, totalDias - domingos);
+    }
+
     // Función para calcular cuotas automáticamente
     function calcularCuotas() {
         const monto = parseFloat(document.getElementById('id_monto').value) || 0;
@@ -532,18 +551,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 let numeroCuotas = 0;
                 
                 if (formaPago === 'diario') {
-                    // Contar días laborables (lunes a sábado)
-                    let currentDate = new Date(fechaInicio);
-                    currentDate.setDate(currentDate.getDate() + 1); // Empezar al día siguiente
-                    
-                    while (currentDate <= fechaFin) {
-                        if (currentDate.getDay() >= 1 && currentDate.getDay() <= 6) { // Lunes a sábado
-                            numeroCuotas++;
-                        }
-                        currentDate.setDate(currentDate.getDate() + 1);
-                    }
+                    numeroCuotas = contarDiasLaborables(fechaInicio, fechaFin);
                 } else { // semanal
-                    numeroCuotas = Math.max(1, Math.floor(diasTotales / 7));
+                    numeroCuotas = Math.max(1, Math.ceil(diasTotales / 7));
                 }
                 
                 const montoPorCuota = numeroCuotas > 0 ? montoTotal / numeroCuotas : 0;

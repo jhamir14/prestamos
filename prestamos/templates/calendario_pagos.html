@@ -4,7 +4,7 @@
 <div class="calendar-container">
     <div class="calendar-header">
         <h1>Calendario de Pagos</h1>
-        <a href="javascript:history.back()" class="btn-back">← Volver</a>
+        <a href="{{ prev_url|default:'/index/' }}" class="btn-back">← Volver</a>
         <div class="loan-info">
             <h2>{{ prestamo.cliente.nombre }}</h2>
             <p><strong>Monto del Préstamo:</strong> S/{{ prestamo.monto }}</p>
@@ -56,13 +56,13 @@
                         {% for cuota in cuotas %}
                             {% if cuota.fecha_pago.day == day and cuota.fecha_pago.month == month and cuota.fecha_pago.year == year %}
                                 <div class="payment-indicator {{ cuota.tipo_cuota }} {% if cuota.pagada %}pagada{% elif prestamo.estado %}cancelada{% endif %}">
-                                    <div class="payment-amount">S/{{ cuota.monto|floatformat:2 }}</div>
-                                    <div class="payment-type">
-                                        {% if cuota.tipo_cuota == 'diario' %}Diario{% else %}Semanal{% endif %}
-                                    </div>
                                     {% if not cuota.pagada %}
+                                        <div class="payment-amount">S/{{ cuota.monto|floatformat:2 }}</div>
+                                        <div class="payment-type">
+                                            {% if cuota.tipo_cuota == 'diario' %}Diario{% else %}Semanal{% endif %}
+                                        </div>
                                         {% if not prestamo.estado %}
-                                            <form method="post" action="/marcar-cuota-pagada/{{ cuota.id }}/" class="mark-paid-form">
+                                            <form method="post" action="/marcar-cuota-pagada/{{ cuota.id }}/" class="mark-paid-form" data-message="¿Marcar la cuota de S/{{ cuota.monto|floatformat:2 }} del {{ cuota.fecha_pago|date:'d/m/Y' }} como pagada?" onsubmit="return confirmarMarcarPagada(event)">
                                                 {% csrf_token %}
                                                 <button type="submit" class="mark-paid-btn">✓ Pagar</button>
                                             </form>
@@ -70,7 +70,10 @@
                                             <div class="cancelled-status">🚫 Cancelado</div>
                                         {% endif %}
                                     {% else %}
-                                        <div class="paid-status">✓ Pagada</div>
+                                        <form method="post" action="/marcar-cuota-no-pagada/{{ cuota.id }}/" class="mark-unpaid-form" data-message="¿Desmarcar la cuota de S/{{ cuota.monto|floatformat:2 }} del {{ cuota.fecha_pago|date:'d/m/Y' }}?" onsubmit="return confirmarDesmarcar(event)">
+                                            {% csrf_token %}
+                                            <button type="submit" class="mark-unpaid-btn">↩︎ Desmarcar</button>
+                                        </form>
                                     {% endif %}
                                 </div>
                             {% endif %}
@@ -119,10 +122,13 @@
                     
                     <div class="payment-status">
                         {% if cuota.pagada %}
-                            <div class="status-paid">
-                                <span class="status-icon">✅</span>
-                                <span class="status-text">Pagada</span>
-                            </div>
+                            <form method="post" action="/marcar-cuota-no-pagada/{{ cuota.id }}/" class="mark-unpaid-form" data-message="¿Desmarcar la cuota de S/{{ cuota.monto|floatformat:2 }} del {{ cuota.fecha_pago|date:'d/m/Y' }}?" onsubmit="return confirmarDesmarcar(event)">
+                                {% csrf_token %}
+                                <button type="submit" class="mark-unpaid-btn-mobile">
+                                    <span class="btn-icon">↩︎</span>
+                                    <span class="btn-text">Desmarcar</span>
+                                </button>
+                            </form>
                         {% else %}
                             {% if prestamo.estado %}
                                 <div class="status-cancelled">
@@ -130,7 +136,7 @@
                                     <span class="status-text">Cancelado</span>
                                 </div>
                             {% else %}
-                                <form method="post" action="/marcar-cuota-pagada/{{ cuota.id }}/" class="mark-paid-form">
+                                <form method="post" action="/marcar-cuota-pagada/{{ cuota.id }}/" class="mark-paid-form" data-message="¿Marcar la cuota de S/{{ cuota.monto|floatformat:2 }} del {{ cuota.fecha_pago|date:'d/m/Y' }} como pagada?" onsubmit="return confirmarMarcarPagada(event)">
                                     {% csrf_token %}
                                     <button type="submit" class="mark-paid-btn-mobile">
                                         <span class="btn-icon">💳</span>
@@ -175,6 +181,9 @@
     </div>
 
     <div class="calendar-actions">
+        <a href="/editar-prestamo/{{ prestamo.id }}/" class="btn-download">
+            ✏️ Editar Préstamo
+        </a>
         <a href="/descargar-calendario/{{ prestamo.id }}/" class="btn-download" target="_blank">
             📄 Descargar Calendario PDF
         </a>
@@ -352,21 +361,31 @@
     font-weight: 600;
     width: 100%;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-height: 68px;
+    position: relative;
 }
 
 .payment-indicator.diario {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
+    background: transparent !important;
+    color: #2c3e50 !important;
+    border: none !important;
 }
 
 .payment-indicator.semanal {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: white;
+    background: transparent !important;
+    color: #2c3e50 !important;
+    border: none !important;
 }
 
 .payment-indicator.pagada {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    opacity: 0.9;
+    background: transparent !important;
+    opacity: 1;
+    color: #2c3e50 !important;
+    border: none;
 }
 
 .payment-indicator.cancelada {
@@ -379,22 +398,74 @@
     width: 100%;
 }
 
+.mark-unpaid-form {
+    /* En móvil no posicionamos absoluto para evitar que el botón se superponga */
+    margin-top: 0;
+    width: auto;
+    position: static;
+}
+
 .mark-paid-btn {
-    background: #28a745;
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.7rem;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 10px 16px !important;
+    border-radius: 20px !important;
+    font-size: 0.86rem !important;
+    font-weight: 800;
     cursor: pointer;
-    transition: all 0.3s ease;
-    width: 100%;
-    box-sizing: border-box;
+    transition: all 0.2s ease;
+    width: fit-content !important;
+    min-width: 112px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1.1;
+    z-index: 1;
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.25);
 }
 
 .mark-paid-btn:hover {
-    background: #218838;
-    transform: scale(1.02);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(40, 167, 69, 0.35);
+    background: linear-gradient(135deg, #218838 0%, #1e7e34 100%) !important;
+}
+
+
+
+.mark-unpaid-btn {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 8px 14px !important;
+    border-radius: 18px !important;
+    font-size: 0.8rem !important;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: fit-content !important;
+    min-width: 100px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1.1;
+    z-index: 1;
+    box-shadow: 0 3px 10px rgba(220, 53, 69, 0.25);
+}
+
+.payment-indicator.pagada .mark-unpaid-form {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.mark-unpaid-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(220, 53, 69, 0.35);
+    background: linear-gradient(135deg, #c82333 0%, #b21f2d 100%) !important;
 }
 
 .paid-status {
@@ -403,6 +474,11 @@
     font-size: 0.75rem;
     margin-top: 3px;
     text-align: center;
+}
+
+/* Oculta el texto "✓ Pagada" en la vista de calendario de escritorio */
+.calendar-wrapper .paid-status {
+    display: none !important;
 }
 
 .cancelled-status {
@@ -625,6 +701,10 @@
     .calendar-container {
         padding: 10px;
     }
+    /* Añadir espacio superior para que el botón no tape el título */
+    .calendar-header {
+        padding-top: 44px;
+    }
     
     .calendar-header h1 {
         font-size: 1.8rem;
@@ -727,7 +807,8 @@
     }
     
     .payment-item.paid {
-        background: #e8f5e8;
+        /* Quitar fondo verde en móviles para cuotas pagadas */
+        background: #f8f9fa;
         border-left-color: #28a745;
     }
     
@@ -803,6 +884,8 @@
     .payment-status {
         display: flex;
         align-items: center;
+        /* Empujar el contenedor del botón hacia el lado derecho */
+        margin-left: auto;
     }
     
     .status-paid, .status-cancelled {
@@ -832,25 +915,26 @@
     
     .mark-paid-btn-mobile {
         background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        color: white;
+        color: #fff;
         border: none;
-        padding: 14px 20px;
-        border-radius: 12px;
-        font-size: 0.95rem;
+        padding: 14px 18px;
+        border-radius: 18px;
+        font-size: 1rem;
         font-weight: 800;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 5px;
-        min-width: 100px;
+        gap: 6px;
+        min-width: 120px;
         box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
     }
     
     .mark-paid-btn-mobile:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 5px 14px rgba(40, 167, 69, 0.35);
+        background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
     }
     
     .btn-icon {
@@ -861,6 +945,29 @@
         font-size: 0.8rem;
         font-weight: 700;
         letter-spacing: 0.3px;
+    }
+
+    .mark-unpaid-btn-mobile {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: #fff;
+        border: none;
+        padding: 12px 16px;
+        border-radius: 16px;
+        font-size: 0.95rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        min-width: 110px;
+        box-shadow: 0 3px 10px rgba(220, 53, 69, 0.3);
+    }
+    .mark-unpaid-btn-mobile:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 14px rgba(220, 53, 69, 0.35);
+        background: linear-gradient(135deg, #c82333 0%, #b21f2d 100%);
     }
     
     .no-payments-mobile {
@@ -911,12 +1018,23 @@
         align-items: center;
     }
     
-    .btn-back, .btn-cancel-loan, .btn-download {
+    .calendar-actions .btn-back, .btn-cancel-loan, .btn-download {
         padding: 12px 25px;
         font-size: 0.9rem;
         width: 100%;
         max-width: 300px;
         text-align: center;
+    }
+
+    /* Ajustar tamaño y posición del botón de volver en móvil */
+    .calendar-header .btn-back {
+        padding: 8px 14px;
+        font-size: 0.9rem;
+        width: auto;
+        max-width: none;
+        display: inline-block;
+        top: 8px;
+        left: 8px;
     }
     
     .loan-cancelled-notice {
@@ -933,6 +1051,10 @@
 @media (max-width: 480px) {
     .calendar-container {
         padding: 5px;
+    }
+    /* En pantallas muy pequeñas, más espacio para el título */
+    .calendar-header {
+        padding-top: 48px;
     }
     
     .calendar-header h1 {
@@ -1051,16 +1173,146 @@
         margin-right: 6px;
     }
     
-    .btn-back, .btn-cancel-loan, .btn-download {
+    .calendar-actions .btn-back, .btn-cancel-loan, .btn-download {
         padding: 10px 20px;
         font-size: 0.85rem;
     }
 }
 </style>
 
+<!-- Modal de confirmación amigable -->
+<div id="confirmOverlay" class="confirm-overlay" style="display: none;">
+    <div class="confirm-dialog">
+        <div class="confirm-header">
+            <span class="confirm-icon">💬</span>
+            <h3 id="confirmTitle">Confirmar acción</h3>
+        </div>
+        <p id="confirmMessage">¿Deseas continuar?</p>
+        <div class="confirm-actions">
+            <button type="button" id="confirmCancel" class="btn-cancel">Cancelar</button>
+            <button type="button" id="confirmOk" class="btn-confirm">Sí, continuar</button>
+        </div>
+    </div>
+    <style>
+        .confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .confirm-dialog {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 420px;
+            width: 90%;
+            padding: 20px;
+            animation: popIn 0.2s ease-out;
+        }
+        @keyframes popIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .confirm-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .confirm-icon { font-size: 1.4rem; }
+        .confirm-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }
+        .btn-cancel {
+            background: #e9ecef;
+            color: #495057;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn-confirm {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .btn-confirm.warning {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        }
+    </style>
+</div>
+
 <script>
 function confirmarCancelar(clienteNombre) {
     return confirm(`¿Estás seguro de que deseas cancelar el préstamo de ${clienteNombre}?\n\nEsta acción marcará el préstamo como cancelado. Las cuotas pendientes no se podrán marcar como pagadas.`);
+}
+
+// Modal de confirmación amigable
+function openConfirm({ title, message, okText = 'Sí, continuar', okClass = '' }, onOk) {
+    const overlay = document.getElementById('confirmOverlay');
+    const titleEl = document.getElementById('confirmTitle');
+    const messageEl = document.getElementById('confirmMessage');
+    const okBtn = document.getElementById('confirmOk');
+    const cancelBtn = document.getElementById('confirmCancel');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    okBtn.textContent = okText;
+    okBtn.classList.toggle('warning', okClass === 'warning');
+
+    overlay.style.display = 'flex';
+
+    function cleanup() {
+        overlay.style.display = 'none';
+        okBtn.removeEventListener('click', okHandler);
+        cancelBtn.removeEventListener('click', cancelHandler);
+    }
+    function okHandler() { cleanup(); onOk && onOk(); }
+    function cancelHandler() { cleanup(); }
+
+    okBtn.addEventListener('click', okHandler);
+    cancelBtn.addEventListener('click', cancelHandler);
+}
+
+function confirmarMarcarPagada(event) {
+    event.preventDefault();
+    const msg = event.target.dataset.message || '¿Deseas marcar esta cuota como pagada?';
+    openConfirm({
+        title: 'Confirmar pago',
+        message: msg,
+        okText: 'Marcar Pagada'
+    }, function() {
+        event.target.submit();
+    });
+    return false;
+}
+
+function confirmarDesmarcar(event) {
+    event.preventDefault();
+    const msg = event.target.dataset.message || '¿Deseas marcar esta cuota como NO pagada?';
+    openConfirm({
+        title: 'Revertir pago',
+        message: msg,
+        okText: 'Desmarcar',
+        okClass: 'warning'
+    }, function() {
+        event.target.submit();
+    });
+    return false;
 }
 
 // Funcionalidad para alternar entre vistas en móviles
@@ -1120,5 +1372,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }, index * 100);
     });
 });
+
+// Navegación inteligente para el botón Volver
+function smartBack(event) {
+    event.preventDefault();
+    const ref = document.referrer || '';
+    const isAction = /\/marcar-cuota-(pagada|no-pagada)\//.test(ref);
+    if (isAction) {
+        // Si venimos de una acción POST, retrocede dos pasos para llegar a la página previa real
+        history.go(-2);
+        return false;
+    }
+    if (ref) {
+        window.location.href = ref;
+    } else {
+        window.location.href = '/index/';
+    }
+}
 </script>
 {% endblock %}

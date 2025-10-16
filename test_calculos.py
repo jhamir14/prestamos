@@ -32,7 +32,7 @@ prestamo1 = Prestamo(
 )
 
 print(f"   Monto base: S/ {prestamo1.monto}")
-print(f"   Interés (20%): S/ {prestamo1.monto * 0.20}")
+print(f"   Interés (quincenal): S/ {prestamo1.monto_interes} ({prestamo1.porcentaje_interes_total * 100:.0f}%)")
 print(f"   Monto total: S/ {prestamo1.monto_total}")
 print(f"   Días totales: {prestamo1.dias_totales}")
 print(f"   Número de cuotas: {prestamo1.numero_cuotas}")
@@ -49,7 +49,7 @@ prestamo2 = Prestamo(
 )
 
 print(f"   Monto base: S/ {prestamo2.monto}")
-print(f"   Interés (20%): S/ {prestamo2.monto * 0.20}")
+print(f"   Interés (quincenal): S/ {prestamo2.monto_interes} ({prestamo2.porcentaje_interes_total * 100:.0f}%)")
 print(f"   Monto total: S/ {prestamo2.monto_total}")
 print(f"   Días totales: {prestamo2.dias_totales}")
 print(f"   Número de cuotas: {prestamo2.numero_cuotas}")
@@ -59,7 +59,7 @@ print("\n✅ VERIFICACIÓN DE CÁLCULOS")
 print("=" * 30)
 
 # Verificar escenario 1 (ejemplo del usuario)
-expected_total_1 = 500 + (500 * 0.20)  # 600
+expected_total_1 = 500 + (500 * 0.10)  # 550, 1 quincena
 expected_cuotas_1 = 3  # 15 días / 7 = ~2.14, redondeado hacia arriba = 3
 expected_monto_cuota_1 = expected_total_1 / expected_cuotas_1  # 200
 

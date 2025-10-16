@@ -13,9 +13,9 @@ Un sistema web desarrollado en Django para la gestión de préstamos, clientes y
 
 ## Tecnologías Utilizadas
 
-- **Backend**: Django 5.2.5
+- **Backend**: Django 4.2 LTS
 - **API**: Django REST Framework 3.16.1
-- **Base de datos**: SQLite3
+- **Base de datos**: MySQL (PyMySQL)
 - **Frontend**: HTML, CSS, JavaScript (templates Django)
 
 ## Instalación
@@ -75,7 +75,7 @@ prestamos/
 │   │   ├── forms.py            # Formularios
 │   │   ├── templates/          # Plantillas HTML
 │   │   └── migrations/         # Migraciones de base de datos
-│   └── db.sqlite3             # Base de datos SQLite
+│   └── (configurada vía DATABASE_URL) # Base de datos
 ├── venv/                      # Entorno virtual
 ├── requirements.txt           # Dependencias del proyecto
 └── README.md                 # Este archivo

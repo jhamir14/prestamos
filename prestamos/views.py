@@ -1,7 +1,9 @@
 from django.shortcuts import render
+from django.shortcuts import get_object_or_404
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from django.http import HttpResponse, JsonResponse
+from django.urls import reverse
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.contrib.auth import login
@@ -12,7 +14,10 @@ from django.views.decorators.http import require_http_methods
 from .forms import PrestamoForm, ClienteForm
 from .models import Prestamo, Cliente, CuotaPago
 from django.db import models
-from datetime import datetime, timedelta, date
+from django.db.models import Sum
+from datetime import datetime, timedelta
+from django.utils import timezone
+from django.views.decorators.cache import never_cache
 import calendar
 import logging
 import json
@@ -88,8 +93,6 @@ def crear_prestamo(request):
         if form.is_valid():
             try:
                 prestamo = form.save()
-                # Generar cuotas automáticamente
-                prestamo.generar_cuotas()
                 messages.success(request, f'Préstamo de S/ {prestamo.monto} creado exitosamente para {prestamo.cliente.nombre}. Se han generado las cuotas automáticamente.')
                 return redirect('index')
             except Exception as e:
@@ -141,8 +144,6 @@ def registrar_prestamo(request):
         if form.is_valid():
             try:
                 prestamo = form.save()
-                # Generar cuotas automáticamente
-                prestamo.generar_cuotas()
                 messages.success(request, f'Préstamo de ${prestamo.monto} registrado exitosamente para {prestamo.cliente.nombre}. Se han generado las cuotas automáticamente.')
                 return redirect('index')
             except Exception as e:
@@ -154,6 +155,38 @@ def registrar_prestamo(request):
             return render(request, 'registrar_prestamo.html', {
                 "form": form, 
                 "error": "Por favor, corrige los errores en el formulario."
+            })
+
+def editar_prestamo(request, prestamo_id):
+    """Permite editar un préstamo existente."""
+    # Solo usuarios autenticados pueden editar préstamos
+    if not request.user.is_authenticated:
+        return redirect('signin')
+
+    prestamo = get_object_or_404(Prestamo, id=prestamo_id)
+
+    if request.method == 'GET':
+        form = PrestamoForm(instance=prestamo)
+        return render(request, 'editar_prestamo.html', {'form': form, 'prestamo': prestamo})
+    else:
+        form = PrestamoForm(request.POST, instance=prestamo)
+        if form.is_valid():
+            try:
+                prestamo = form.save()
+                messages.success(request, 'Préstamo actualizado. Las cuotas se recalcularon si cambiaste monto, fechas o forma de pago (se preservan las pagadas).')
+                return redirect('calendario_pagos', prestamo_id=prestamo.id)
+            except Exception as e:
+                logger.error(f"Error al editar préstamo: {e}")
+                return render(request, 'editar_prestamo.html', {
+                    'form': form,
+                    'prestamo': prestamo,
+                    'error': 'Error al guardar los cambios. Inténtalo de nuevo.'
+                })
+        else:
+            return render(request, 'editar_prestamo.html', {
+                'form': form,
+                'prestamo': prestamo,
+                'error': 'Por favor, corrige los errores en el formulario.'
             })
 
 def calendario_pagos(request, prestamo_id):
@@ -197,6 +230,18 @@ def calendario_pagos(request, prestamo_id):
     
     # Obtener todas las cuotas del préstamo
     cuotas = prestamo.cuotas.all().order_by('fecha_pago')
+
+    # Determinar URL previa real (no acciones de marcar/desmarcar)
+    try:
+        referer = request.META.get('HTTP_REFERER', '') or ''
+        es_accion = ('/marcar-cuota-pagada/' in referer) or ('/marcar-cuota-no-pagada/' in referer)
+        es_calendario = '/calendario-pagos/' in referer
+        if referer and not es_accion and not es_calendario:
+            request.session['prev_calendario_url'] = referer
+    except Exception:
+        pass
+
+    prev_url = request.session.get('prev_calendario_url', '/index/')
     
     context = {
         'prestamo': prestamo,
@@ -206,6 +251,7 @@ def calendario_pagos(request, prestamo_id):
         'year': year,
         'cuotas': cuotas,
         'now': now,
+        'prev_url': prev_url,
     }
     
     return render(request, 'calendario_pagos.html', context)
@@ -244,6 +290,10 @@ def cancelar_prestamo(request, prestamo_id):
         except Prestamo.DoesNotExist:
             messages.error(request, 'Préstamo no encontrado.')
     
+    # Volver a la página origen para mantener mes/año si vienen en la URL
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
     return redirect('calendario_pagos', prestamo_id=prestamo_id)
 
 def marcar_cuota_pagada(request, cuota_id):
@@ -255,14 +305,40 @@ def marcar_cuota_pagada(request, cuota_id):
         try:
             cuota = CuotaPago.objects.get(id=cuota_id)
             cuota.pagada = True
-            cuota.fecha_pagada = datetime.now().date()
+            # Usar fecha local (timezone-aware) para coherencia con el reporte
+            cuota.fecha_pagada = timezone.localdate()
             cuota.save()
             messages.success(request, f'Cuota de ${cuota.monto} marcada como pagada.')
         except CuotaPago.DoesNotExist:
             messages.error(request, 'Cuota no encontrada.')
     
-    # Redirigir de vuelta al calendario
+    # Redirigir de vuelta a la página origen para mantener mes/año del calendario
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
     return redirect('calendario_pagos', prestamo_id=cuota.prestamo.id)
+
+def marcar_cuota_no_pagada(request, cuota_id):
+    """Marca una cuota como NO pagada (revierte el pago)."""
+    if not request.user.is_authenticated:
+        return redirect('signin')
+
+    if request.method == 'POST':
+        try:
+            cuota = CuotaPago.objects.get(id=cuota_id)
+            cuota.pagada = False
+            cuota.fecha_pagada = None
+            cuota.save()
+            messages.success(request, f'Cuota de ${cuota.monto} marcada como no pagada.')
+            # Redirigir de vuelta a la página origen para mantener mes/año del calendario
+            referer = request.META.get('HTTP_REFERER')
+            if referer:
+                return redirect(referer)
+            return redirect('calendario_pagos', prestamo_id=cuota.prestamo.id)
+        except CuotaPago.DoesNotExist:
+            messages.error(request, 'Cuota no encontrada.')
+    
+    return redirect('index')
 
 def signout(request):
     logout(request)
@@ -325,6 +401,7 @@ def prestamos_semanales(request):
         'total_prestado': total_prestado
     })
 
+@never_cache
 def reporte_pagos(request):
     """Muestra un reporte de pagos que vencen hoy y préstamos con cuotas retrasadas"""
     # Solo usuarios autenticados pueden ver el reporte
@@ -332,8 +409,8 @@ def reporte_pagos(request):
         return redirect('signin')
     
     try:
-        # Obtener la fecha actual
-        hoy = date.today()
+        # Obtener la fecha actual (timezone-aware, convertido a fecha local)
+        hoy = timezone.localdate()
         
         # Inicializar variables con valores por defecto
         cuotas_vencidas_hoy = []
@@ -351,31 +428,35 @@ def reporte_pagos(request):
             # Buscar cuotas que vencen hoy y no han sido pagadas (tanto diarias como semanales)
             cuotas_vencidas_hoy = CuotaPago.objects.filter(
                 fecha_pago=hoy,
-                pagada=False
-            ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre')
+                pagada=False,
+                prestamo__estado=False
+            ).select_related('prestamo', 'prestamo__cliente').order_by('prestamo__cliente__nombre', 'fecha_pago')
             
             # Buscar préstamos con cuotas retrasadas (fecha de pago menor a hoy y no pagadas)
             cuotas_retrasadas = CuotaPago.objects.filter(
                 fecha_pago__lt=hoy,
-                pagada=False
-            ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre', 'fecha_pago')
+                pagada=False,
+                prestamo__estado=False
+            ).select_related('prestamo', 'prestamo__cliente').order_by('prestamo__cliente__nombre', 'fecha_pago')
             
             # Calcular totales para cuotas de hoy
             total_cuotas_hoy = cuotas_vencidas_hoy.count()
-            total_monto_hoy = sum(cuota.monto for cuota in cuotas_vencidas_hoy) if cuotas_vencidas_hoy else 0
+            total_monto_hoy = cuotas_vencidas_hoy.aggregate(total=Sum('monto'))['total'] or 0
             
             # Calcular totales para cuotas retrasadas
             total_cuotas_retrasadas = cuotas_retrasadas.count()
-            total_monto_retrasadas = sum(cuota.monto for cuota in cuotas_retrasadas) if cuotas_retrasadas else 0
+            total_monto_retrasadas = cuotas_retrasadas.aggregate(total=Sum('monto'))['total'] or 0
             
             # Obtener estadísticas adicionales
             prestamos_activos = Prestamo.objects.filter(estado=False).count()
             prestamos_diarios_activos = Prestamo.objects.filter(forma_pago='diario', estado=False).count()
             prestamos_semanales_activos = Prestamo.objects.filter(forma_pago='semanal', estado=False).count()
             
+            # Cuotas marcadas como pagadas en la fecha de hoy (independiente de su fecha de pago)
             cuotas_pagadas_hoy = CuotaPago.objects.filter(
-                fecha_pago=hoy,
-                pagada=True
+                fecha_pagada=hoy,
+                pagada=True,
+                prestamo__estado=False
             ).count()
             
         except Exception as e:
@@ -540,8 +621,8 @@ def descargar_calendario_pdf(request, prestamo_id):
     total_cuotas = cuotas.count()
     cuotas_pagadas = cuotas.filter(pagada=True).count()
     cuotas_pendientes = total_cuotas - cuotas_pagadas
-    monto_pagado = sum(cuota.monto for cuota in cuotas.filter(pagada=True))
-    monto_pendiente = sum(cuota.monto for cuota in cuotas.filter(pagada=False))
+    monto_pagado = cuotas.filter(pagada=True).aggregate(total=Sum('monto'))['total'] or 0
+    monto_pendiente = cuotas.filter(pagada=False).aggregate(total=Sum('monto'))['total'] or 0
     
     story.append(Paragraph("RESUMEN", subtitle_style))
     story.append(Paragraph(f"<b>Total de Cuotas:</b> {total_cuotas}", styles['Normal']))

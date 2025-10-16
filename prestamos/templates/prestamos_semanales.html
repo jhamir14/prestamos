@@ -161,6 +161,10 @@
                     </div>
                     
                     <div class="loan-actions">
+                        <button class="btn-view-calendar" onclick="window.location.href='/editar-prestamo/{{ prestamo.id }}/'">
+                            <span class="btn-icon">✏️</span>
+                            <span class="btn-text">Editar</span>
+                        </button>
                         <button class="btn-view-calendar" onclick="window.location.href='/calendario-pagos/{{ prestamo.id }}/'">
                             <span class="btn-icon">📅</span>
                             <span class="btn-text">Ver Calendario</span>

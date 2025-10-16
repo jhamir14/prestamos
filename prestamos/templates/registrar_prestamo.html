@@ -604,6 +604,25 @@ document.addEventListener('DOMContentLoaded', function() {
             return Math.max(1, quincenas); // Mínimo 1 quincena
         }
 
+        // Calcular días laborables (lunes a sábado) sin bucles
+        function contarDiasLaborables(fechaInicio, fechaFin) {
+            if (fechaFin <= fechaInicio) return 0;
+            const MS_DIA = 1000 * 60 * 60 * 24;
+            const totalDias = Math.ceil((fechaFin - fechaInicio) / MS_DIA);
+            const inicio = new Date(fechaInicio);
+            inicio.setDate(inicio.getDate() + 1); // desde el día siguiente
+            const diaInicio = inicio.getDay(); // 0=domingo
+            const deltaPrimerDomingo = (7 - diaInicio) % 7;
+            const primerDomingo = new Date(inicio);
+            primerDomingo.setDate(primerDomingo.getDate() + deltaPrimerDomingo);
+            let domingos = 0;
+            if (primerDomingo <= fechaFin) {
+                const diasEntre = Math.floor((fechaFin - primerDomingo) / MS_DIA);
+                domingos = Math.floor(diasEntre / 7) + 1;
+            }
+            return Math.max(0, totalDias - domingos);
+        }
+
         // Función para calcular cuotas
         function calcularCuotas() {
             const monto = parseFloat($('#id_monto').val()) || 0;
@@ -626,21 +645,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Calcular número de cuotas según forma de pago
                 let numeroCuotas;
                 if (formaPago === 'diario') {
-                    // Solo días laborables (lunes a sábado)
-                    let diasLaborables = 0;
-                    let fechaActual = new Date(fechaInicio);
-                    fechaActual.setDate(fechaActual.getDate() + 1); // Empezar desde el día siguiente
-                    
-                    while (fechaActual <= fechaFin) {
-                        const diaSemana = fechaActual.getDay();
-                        if (diaSemana !== 0) { // 0 = domingo
-                            diasLaborables++;
-                        }
-                        fechaActual.setDate(fechaActual.getDate() + 1);
-                    }
-                    numeroCuotas = diasLaborables;
+                    numeroCuotas = contarDiasLaborables(fechaInicio, fechaFin);
                 } else { // semanal
-                    numeroCuotas = Math.ceil(diasTotales / 7);
+                    numeroCuotas = Math.max(1, Math.ceil(diasTotales / 7));
                 }
                 
                 // Calcular montos con interés progresivo

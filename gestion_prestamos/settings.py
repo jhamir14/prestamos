@@ -13,9 +13,23 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 import dj_database_url
+from dotenv import load_dotenv
+
+# Asegurar que PyMySQL se utilice como reemplazo de MySQLdb
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except Exception:
+    pass
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Cargar variables de entorno desde .env en el directorio del proyecto
+try:
+    load_dotenv(BASE_DIR.parent / '.env')
+except Exception:
+    pass
 
 
 # Quick-start development settings - unsuitable for production
@@ -27,7 +41,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', default='django-insecure-dev-key-chang
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',')
 
 # Application definition
 
@@ -38,7 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'prestamos',
+    'prestamos.apps.PrestamosConfig',
     'rest_framework',
 ]
 
@@ -77,37 +91,33 @@ WSGI_APPLICATION = 'gestion_prestamos.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Parse database URL
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3')
+# Parse database URL (por defecto MySQL en la base 'prestamos')
+database_url = os.environ.get('DATABASE_URL', 'mysql://root:@localhost:3306/prestamos')
 
-try:
-    database_config = dj_database_url.parse(database_url)
-    
-    # Add connection settings only for PostgreSQL
-    if database_config['ENGINE'] == 'django.db.backends.postgresql':
-        # Use psycopg2-binary for Render compatibility
-        database_config['ENGINE'] = 'django.db.backends.postgresql'
-        database_config.update({
-            'CONN_MAX_AGE': 600,
-            'OPTIONS': {
-                'sslmode': 'require',
-            }
-        })
-    
-    DATABASES = {
-        'default': database_config
-    }
-    print(f"✅ Base de datos configurada: {database_config['ENGINE']}")
-except Exception as e:
-    # Fallback a SQLite si hay problemas con la configuración de la base de datos
-    print(f"⚠️ Error configurando base de datos: {e}")
-    print("🔄 Usando SQLite como fallback")
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+database_config = dj_database_url.parse(database_url)
+
+# Ajustes específicos según el motor
+if database_config['ENGINE'] == 'django.db.backends.postgresql':
+    database_config.update({
+        'CONN_MAX_AGE': 600,
+        'OPTIONS': {
+            'sslmode': 'require',
         }
-    }
+    })
+elif database_config['ENGINE'] == 'django.db.backends.mysql':
+    database_config.update({
+        'CONN_MAX_AGE': 300,
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'use_unicode': True,
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
+        }
+    })
+
+DATABASES = {
+    'default': database_config
+}
+print(f"✅ Base de datos configurada: {database_config['ENGINE']} ({database_config.get('NAME')})")
 
 
 # Password validation
@@ -152,8 +162,11 @@ STATICFILES_DIRS = [
     BASE_DIR / 'IMG',  # Carpeta para imágenes
 ]
 
-# WhiteNoise configuration
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# WhiteNoise configuration: usar Manifest solo en producción
+if DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+else:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -163,7 +176,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CSRF Settings
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000,http://127.0.0.1:8000').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000,http://127.0.0.1:8000,http://0.0.0.0:8000').split(',')
 
 # Database connection settings for production
 # These are now handled above in the database configuration

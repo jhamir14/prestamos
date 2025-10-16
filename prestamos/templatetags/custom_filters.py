@@ -1,5 +1,5 @@
 from django import template
-from datetime import date
+from django.utils import timezone
 
 register = template.Library()
 
@@ -9,7 +9,7 @@ def days_overdue(payment_date):
     if not payment_date:
         return "N/A"
     
-    today = date.today()
+    today = timezone.localdate()
     if payment_date < today:
         delta = today - payment_date
         return f"{delta.days} días"

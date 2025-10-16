@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container edit-container">
+    <div class="page-header">
+        <div class="header-left">
+            <h1>✏️ Editar Préstamo #{{ prestamo.id }}</h1>
+            <p>Actualiza la información del préstamo. Las cuotas se recalculan preservando las pagadas.</p>
+        </div>
+        <div class="header-right">
+            <div class="badge-group">
+                <span class="badge info">Pago: {% if prestamo.forma_pago == 'diario' %}Diario (Lun–Sáb){% else %}Semanal{% endif %}</span>
+                <span class="badge period">{{ prestamo.fecha_prestamo|date:"d/m/Y" }} → {{ prestamo.fecha_vencimiento|date:"d/m/Y" }}</span>
+                <span class="badge total">Total: S/{{ prestamo.monto_total|floatformat:2 }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="edit-grid">
+        <div class="form-card">
+            
+            
+            
+            <div class="form-header">
+                <h2>Datos del Préstamo</h2>
+            </div>
+
+        {% if error %}
+        <div class="error-message">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        <form class="loan-form" action="/editar-prestamo/{{ prestamo.id }}/" method="post">
+            {% csrf_token %}
+
+            <!-- Campo de búsqueda de cliente -->
+            <div class="form-group">
+                <label for="cliente-busqueda">{{ form.cliente_busqueda.label }}</label>
+                {{ form.cliente_busqueda }}
+                <div id="sugerencias-cliente" class="sugerencias-container"></div>
+                {{ form.cliente }}
+            </div>
+            
+            <!-- Información del cliente seleccionado -->
+            <div id="info-cliente" class="info-cliente" style="display: none;">
+                <h3>Cliente Seleccionado</h3>
+                <div id="detalles-cliente"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.monto.id_for_label }}">Monto del Préstamo</label>
+                <div class="input-group" aria-label="Monto del Préstamo">
+                    <span class="input-prefix">S/</span>
+                    {{ form.monto }}
+                </div>
+                <small class="form-help">Ingresa el monto base sin separadores. El interés y las cuotas se calculan automáticamente.</small>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="{{ form.fecha_prestamo.id_for_label }}">Fecha del Préstamo</label>
+                    {{ form.fecha_prestamo }}
+                    <small class="form-help">Selecciona la fecha de inicio del préstamo.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.fecha_vencimiento.id_for_label }}">Fecha de Vencimiento</label>
+                    {{ form.fecha_vencimiento }}
+                    <small class="form-help">Por defecto es 30 días desde la fecha de inicio; puedes ajustarla.</small>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.forma_pago.id_for_label }}">Forma de Pago</label>
+                {{ form.forma_pago }}
+                <small class="form-help">{{ form.forma_pago.help_text }}</small>
+            </div>
+            
+            {% if form.errors %}
+            <div class="error-message">
+                <strong>Errores en el formulario:</strong>
+                <ul>
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">Guardar Cambios</button>
+                <a href="/calendario-pagos/{{ prestamo.id }}/" class="btn-cancel">Cancelar</a>
+            </div>
+        </form>
+        </div>
+        <aside class="summary-card">
+            <!-- Calculadora de cuotas -->
+            <div id="calculadora-cuotas" class="calculadora-container" style="display: none;">
+                <h3>📊 Resumen del Préstamo</h3>
+                <div class="resumen-grid">
+                    <div class="resumen-item">
+                        <span class="label">Monto Base:</span>
+                        <span id="monto-base" class="valor">S/ 0.00</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Interés (quincenal):</span>
+                        <span id="interes" class="valor">S/ 0.00</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Monto Total:</span>
+                        <span id="monto-total" class="valor destacado">S/ 0.00</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Días Totales:</span>
+                        <span id="dias-totales" class="valor">0 días</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Número de Cuotas:</span>
+                        <span id="numero-cuotas" class="valor destacado">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="label">Monto por Cuota:</span>
+                        <span id="monto-cuota" class="valor destacado">S/ 0.00</span>
+                    </div>
+                </div>
+                <p class="nota-ajuste">Nota: la última cuota puede ajustarse unos centavos para cuadrar el total.</p>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<style>
+.edit-container {
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: #333;
+}
+
+.badge-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+    color: #495057;
+}
+.badge.total { background: #e6f4ea; color: #1e7e34; border-color: #c6e6cf; }
+.badge.info { background: #e7f0ff; color: #0d6efd; border-color: #cfe2ff; }
+.badge.period { background: #fff3cd; color: #856404; border-color: #ffeeba; }
+
+.edit-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.form-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    padding: 24px;
+}
+
+.form-header h2 {
+    margin: 0 0 12px 0;
+    font-size: 1.3rem;
+    color: #333;
+}
+
+.loan-form .form-group {
+    margin-bottom: 16px;
+}
+
+.loan-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 36px;
+}
+
+.loan-form input, .loan-form select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+/* Grupo amigable para el campo monto */
+.input-group { display: flex; align-items: center; gap: 8px; }
+.input-prefix {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #495057;
+    font-weight: 600;
+}
+.form-help { color: #6c757d; font-size: .9em; margin-top: 6px; }
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn-submit {
+    background: linear-gradient(90deg, #28a745, #218838);
+    color: #fff;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.05s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.btn-submit:hover { box-shadow: 0 6px 12px rgba(33,136,56,0.25); }
+.btn-submit:active { transform: translateY(1px); }
+
+.edit-container .btn-cancel {
+    background: #f8f9fa;
+    color: #333;
+    text-decoration: none;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
+
+.sugerencias-container {
+    margin-top: 8px;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+.sugerencia-item {
+    padding: 8px 10px;
+    cursor: pointer;
+}
+.sugerencia-item:hover { background: #f1f3f5; }
+
+.summary-card { position: sticky; top: 20px; }
+.calculadora-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+}
+
+.calculadora-container h3 {
+    color: #495057;
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.resumen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.resumen-item {
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.resumen-item .label {
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.9em;
+}
+
+.resumen-item .valor {
+    font-weight: 600;
+    color: #28a745;
+    font-size: 1em;
+}
+
+.resumen-item .valor.destacado {
+    color: #007bff;
+}
+.nota-ajuste { margin-top: 10px; color: #6c757d; font-size: 0.9em; }
+
+@media (max-width: 768px) {
+    .edit-grid { grid-template-columns: 1fr; }
+    .summary-card { position: static; }
+    .page-header { flex-direction: column; align-items: flex-start; }
+    .loan-form .form-row { grid-template-columns: 1fr; }
+}
+</style>
+
+<script>
+// Autocompletado de clientes y calculadora de cuotas
+document.addEventListener('DOMContentLoaded', function() {
+    const clienteBusquedaInput = document.getElementById('cliente-busqueda');
+    const clienteSelect = document.getElementById('id_cliente');
+    const sugerenciasContainer = document.getElementById('sugerencias-cliente');
+    const infoCliente = document.getElementById('info-cliente');
+    const detallesCliente = document.getElementById('detalles-cliente');
+
+    function mostrarInfoCliente(cliente) {
+        detallesCliente.innerHTML = `
+            <p><strong>Nombre:</strong> ${cliente.nombre}</p>
+            <p><strong>Correo:</strong> ${cliente.email}</p>
+            <p><strong>Teléfono:</strong> ${cliente.telefono}</p>
+        `;
+        infoCliente.style.display = 'block';
+    }
+
+    function seleccionarCliente(cliente) {
+        clienteSelect.value = cliente.id;
+        clienteBusquedaInput.value = `${cliente.nombre} (${cliente.email})`;
+        sugerenciasContainer.innerHTML = '';
+        mostrarInfoCliente(cliente);
+    }
+
+    clienteBusquedaInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        if (query.length < 2) {
+            sugerenciasContainer.innerHTML = '';
+            return;
+        }
+        fetch(`/api/buscar-clientes/?q=${encodeURIComponent(query)}`)
+            .then(resp => resp.json())
+            .then(data => {
+                sugerenciasContainer.innerHTML = '';
+                data.results.forEach(cliente => {
+                    const item = document.createElement('div');
+                    item.className = 'sugerencia-item';
+                    item.textContent = `${cliente.nombre} - ${cliente.email}`;
+                    item.addEventListener('click', () => seleccionarCliente(cliente));
+                    sugerenciasContainer.appendChild(item);
+                });
+            });
+    });
+
+    // Calculadora de cuotas (alineada con registrar_prestamo)
+    const MS_DIA = 24 * 60 * 60 * 1000;
+
+    // Quincenas totales: ceil(días/15), mínimo 1
+    function calcularQuincenasTotales(fechaInicio, fechaFin) {
+        const diasTotales = Math.ceil((fechaFin - fechaInicio) / MS_DIA);
+        const quincenas = Math.ceil(diasTotales / 15);
+        return Math.max(1, quincenas);
+    }
+
+    // Días laborables (lunes a sábado), excluyendo domingos
+    function contarDiasLaborables(fechaInicio, fechaFin) {
+        if (fechaFin <= fechaInicio) return 0;
+        const totalDias = Math.ceil((fechaFin - fechaInicio) / MS_DIA);
+        const inicio = new Date(fechaInicio);
+        inicio.setDate(inicio.getDate() + 1);
+        const diaInicio = inicio.getDay(); // 0=domingo
+        const deltaPrimerDomingo = (7 - diaInicio) % 7;
+        const primerDomingo = new Date(inicio);
+        primerDomingo.setDate(primerDomingo.getDate() + deltaPrimerDomingo);
+        let domingos = 0;
+        if (primerDomingo <= fechaFin) {
+            const diasEntre = Math.floor((fechaFin - primerDomingo) / MS_DIA);
+            domingos = Math.floor(diasEntre / 7) + 1;
+        }
+        return Math.max(0, totalDias - domingos);
+    }
+
+    // Función para calcular la fecha de vencimiento (30 días después)
+    function calcularFechaVencimiento(fechaPrestamo) {
+        if (fechaPrestamo) {
+            const fecha = new Date(fechaPrestamo);
+            fecha.setDate(fecha.getDate() + 30);
+            return fecha.toISOString().split('T')[0];
+        }
+        return '';
+    }
+
+    function formatearDMY(fechaStr) {
+        if (!fechaStr) return '';
+        const d = new Date(fechaStr);
+        const dia = String(d.getDate()).padStart(2, '0');
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const anio = d.getFullYear();
+        return `${dia}/${mes}/${anio}`;
+    }
+
+    function actualizarBadgesCabecera(montoTotalActual) {
+        const badgePeriodo = document.querySelector('.badge.period');
+        const badgePago = document.querySelector('.badge.info');
+        const badgeTotal = document.querySelector('.badge.total');
+        const fp = fechaPrestamoInput?.value;
+        const fv = fechaVencimientoInput?.value;
+        if (badgePeriodo && fp && fv) {
+            badgePeriodo.textContent = `${formatearDMY(fp)} → ${formatearDMY(fv)}`;
+        }
+        if (badgePago && formaPagoSelect) {
+            badgePago.textContent = `Pago: ${formaPagoSelect.value === 'diario' ? 'Diario (Lun–Sáb)' : 'Semanal'}`;
+        }
+        if (badgeTotal && typeof montoTotalActual === 'number') {
+            badgeTotal.textContent = `Total: S/${montoTotalActual.toFixed(2)}`;
+        }
+    }
+
+    function calcularCuotas() {
+        const monto = parseFloat(document.getElementById('id_monto').value) || 0;
+        const fechaPrestamo = document.getElementById('id_fecha_prestamo').value;
+        const fechaVencimiento = document.getElementById('id_fecha_vencimiento').value;
+        const formaPago = document.getElementById('id_forma_pago').value;
+
+        if (monto > 0 && fechaPrestamo && fechaVencimiento && formaPago) {
+            const fechaInicio = new Date(fechaPrestamo);
+            const fechaFin = new Date(fechaVencimiento);
+            if (fechaFin <= fechaInicio) {
+                document.getElementById('calculadora-cuotas').style.display = 'none';
+                return;
+            }
+
+            // Calcular días totales y quincenas
+            const diasTotales = Math.ceil((fechaFin - fechaInicio) / MS_DIA);
+            const quincenasTotales = calcularQuincenasTotales(fechaInicio, fechaFin);
+            const porcentajeInteres = 0.10 * quincenasTotales; // 10% por quincena
+            const interes = monto * porcentajeInteres;
+            const montoTotal = monto + interes;
+            let numeroCuotas = 0;
+            if (formaPago === 'diario') {
+                numeroCuotas = contarDiasLaborables(fechaInicio, fechaFin);
+            } else {
+                numeroCuotas = Math.max(1, Math.ceil(diasTotales / 7));
+            }
+
+            const montoPorCuota = numeroCuotas > 0 ? (montoTotal / numeroCuotas) : 0;
+            document.getElementById('monto-base').textContent = `S/ ${monto.toFixed(2)}`;
+            document.getElementById('interes').textContent = `S/ ${interes.toFixed(2)} (${(porcentajeInteres * 100).toFixed(0)}% - ${quincenasTotales} ${quincenasTotales === 1 ? 'quincena' : 'quincenas'})`;
+            document.getElementById('monto-total').textContent = `S/ ${montoTotal.toFixed(2)}`;
+            document.getElementById('dias-totales').textContent = `${diasTotales} días`;
+            document.getElementById('numero-cuotas').textContent = numeroCuotas;
+            document.getElementById('monto-cuota').textContent = `S/ ${montoPorCuota.toFixed(2)}`;
+            document.getElementById('calculadora-cuotas').style.display = 'block';
+            actualizarBadgesCabecera(montoTotal);
+        } else {
+            document.getElementById('calculadora-cuotas').style.display = 'none';
+        }
+    }
+
+    const montoInput = document.getElementById('id_monto');
+    const formaPagoSelect = document.getElementById('id_forma_pago');
+    const fechaPrestamoInput = document.getElementById('id_fecha_prestamo');
+    const fechaVencimientoInput = document.getElementById('id_fecha_vencimiento');
+
+    if (montoInput) montoInput.addEventListener('input', calcularCuotas);
+    if (formaPagoSelect) formaPagoSelect.addEventListener('change', function(){
+        actualizarBadgesCabecera();
+        calcularCuotas();
+    });
+    if (fechaPrestamoInput) fechaPrestamoInput.addEventListener('change', function(){
+        // Autocompletar vencimiento si está vacío
+        if (fechaVencimientoInput && !fechaVencimientoInput.value) {
+            const nueva = calcularFechaVencimiento(this.value);
+            if (nueva) fechaVencimientoInput.value = nueva;
+        }
+        actualizarBadgesCabecera();
+        calcularCuotas();
+    });
+    if (fechaVencimientoInput) fechaVencimientoInput.addEventListener('change', function(){
+        actualizarBadgesCabecera();
+        calcularCuotas();
+    });
+
+    // Asegurar que los inputs tengan valor al cargar (en caso de que el navegador no muestre el inicial)
+    const fechaPrestamoServer = '{{ prestamo.fecha_prestamo|date:"Y-m-d" }}';
+    const fechaVencimientoServer = '{{ prestamo.fecha_vencimiento|date:"Y-m-d" }}';
+    if (fechaPrestamoInput && !fechaPrestamoInput.value && fechaPrestamoServer) {
+        fechaPrestamoInput.value = fechaPrestamoServer;
+    }
+    if (fechaVencimientoInput && !fechaVencimientoInput.value && fechaVencimientoServer) {
+        fechaVencimientoInput.value = fechaVencimientoServer;
+    }
+
+    actualizarBadgesCabecera();
+    calcularCuotas();
+});
+</script>
+{% endblock %}
