@@ -190,6 +190,25 @@
         button[type="submit"]:hover {
             background-color: #218838;
         }
+
+        /* Contenedor general con borde y separación de esquinas */
+        .container {
+            max-width: 1200px;
+            margin: 24px auto;
+            padding: 24px;
+            background-color: #ffffff;
+            border: 2px solid #e1e8ed;
+            border-radius: 16px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 12px;
+                padding: 18px;
+                border-radius: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -218,8 +237,10 @@
         </div>
     </nav>
     
-    {% block content %}
-    {% endblock %}
+    <div class="container">
+        {% block content %}
+        {% endblock %}
+    </div>
 
     <!-- Modal de confirmación de logout -->
     <div id="logoutModal" class="modal-overlay" style="display: none;">
@@ -484,5 +505,87 @@
             }
         }
     </style>
+    <!-- Modal de confirmación accesible y agradable -->
+    <div id="confirm-overlay" class="confirm-overlay" style="display:none;">
+        <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+            <div class="confirm-header">
+                <span id="confirm-title">Confirmar acción</span>
+                <button type="button" class="confirm-close" aria-label="Cerrar">×</button>
+            </div>
+            <div class="confirm-body">
+                <p id="confirm-message">¿Seguro que deseas continuar?</p>
+            </div>
+            <div class="confirm-actions">
+                <button type="button" class="btn-confirm">Confirmar</button>
+                <button type="button" class="btn-cancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    <style>
+        .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .confirm-modal { background: #ffffff; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: min(420px, 92vw); overflow: hidden; animation: fadeIn .15s ease-out; }
+        .confirm-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 700; }
+        .confirm-close { background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+        .confirm-close:hover { background: rgba(255,255,255,0.15); }
+        .confirm-body { padding: 18px 16px; color: #2c3e50; }
+        .confirm-body p { margin: 0; font-size: 1rem; }
+        .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; padding: 12px 16px; background: #f8f9fa; }
+        .btn-confirm { background: linear-gradient(135deg, #27ae60 0%, #1e8e4f 100%); color: white; border: none; padding: 10px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+        .btn-cancel { background: #e0e0e0; color: #2c3e50; border: none; padding: 10px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+        .btn-confirm:hover { filter: brightness(1.05); transform: translateY(-1px); }
+        .btn-cancel:hover { filter: brightness(1.02); }
+        @keyframes fadeIn { from { transform: translateY(6px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+    </style>
+    <script>
+        (function() {
+            const overlay = document.getElementById('confirm-overlay');
+            if (!overlay) return;
+            const msgEl = overlay.querySelector('#confirm-message');
+            const btnConfirm = overlay.querySelector('.btn-confirm');
+            const btnCancel = overlay.querySelector('.btn-cancel');
+            const btnClose = overlay.querySelector('.confirm-close');
+            let pendingSubmit = null;
+            let defaultLabel = 'Confirmar';
+            function openModal(message, label) {
+                msgEl.textContent = message || '¿Seguro que deseas continuar?';
+                btnConfirm.textContent = label || defaultLabel;
+                overlay.style.display = 'flex';
+                btnConfirm.focus();
+                document.body.style.overflow = 'hidden';
+            }
+            function closeModal() {
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                pendingSubmit = null;
+                btnConfirm.textContent = defaultLabel;
+                msgEl.textContent = '¿Seguro que deseas continuar?';
+            }
+            btnCancel.addEventListener('click', closeModal);
+            btnClose.addEventListener('click', closeModal);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+            btnConfirm.addEventListener('click', () => {
+                if (pendingSubmit) {
+                    const form = pendingSubmit;
+                    closeModal();
+                    form.removeAttribute('data-intercepted');
+                    form.submit();
+                } else {
+                    closeModal();
+                }
+            });
+            document.addEventListener('submit', function(e) {
+                const form = e.target;
+                if (!form.classList || !form.classList.contains('confirmable')) return;
+                if (form.getAttribute('data-intercepted') === 'true') return;
+                e.preventDefault();
+                form.setAttribute('data-intercepted', 'true');
+                pendingSubmit = form;
+                const message = form.getAttribute('data-confirm-message') || '¿Seguro que deseas continuar?';
+                const label = form.getAttribute('data-confirm-label') || defaultLabel;
+                openModal(message, label);
+            }, true);
+        })();
+    </script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

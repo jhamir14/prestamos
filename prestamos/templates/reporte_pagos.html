@@ -153,9 +153,9 @@
                                     <a href="{% url 'calendario_pagos' cuota.prestamo.id %}" class="btn-view">
                                         Ver Calendario
                                     </a>
-                                    <form method="post" action="{% url 'marcar_cuota_pagada' cuota.id %}" style="display: inline;">
+                                    <form method="post" action="{% url 'marcar_cuota_pagada' cuota.id %}" style="display: inline;" class="confirmable" data-confirm-message="¿Confirmar pago de S/{{ cuota.monto|floatformat:2 }} del {{ cuota.fecha_pago|date:'d/m/Y' }}?" data-confirm-label="Confirmar Pago">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn-mark-paid" onclick="return confirm('¿Marcar esta cuota como pagada?')">
+                                        <button type="submit" class="btn-mark-paid">
                                             Marcar Pagada
                                         </button>
                                     </form>
@@ -208,9 +208,9 @@
                         <a href="{% url 'calendario_pagos' cuota.prestamo.id %}" class="btn-view-mobile">
                             📅 Ver Calendario
                         </a>
-                        <form method="post" action="{% url 'marcar_cuota_pagada' cuota.id %}" class="form-mobile">
+                        <form method="post" action="{% url 'marcar_cuota_pagada' cuota.id %}" class="form-mobile confirmable" data-confirm-message="¿Confirmar pago de S/{{ cuota.monto|floatformat:2 }} del {{ cuota.fecha_pago|date:'d/m/Y' }}?" data-confirm-label="Confirmar Pago">
                             {% csrf_token %}
-                            <button type="submit" class="btn-mark-paid-mobile" onclick="return confirm('¿Marcar esta cuota como pagada?')">
+                            <button type="submit" class="btn-mark-paid-mobile">
                                 ✅ Marcar Pagada
                             </button>
                         </form>
@@ -288,9 +288,9 @@
                                     <a href="{% url 'calendario_pagos' cuota.prestamo.id %}" class="btn-view">
                                         Ver Calendario
                                     </a>
-                                    <form method="post" action="{% url 'marcar_cuota_pagada' cuota.id %}" style="display: inline;">
+                                    <form method="post" action="{% url 'marcar_cuota_pagada' cuota.id %}" style="display: inline;" class="confirmable" data-confirm-message="¿Confirmar pago de S/{{ cuota.monto|floatformat:2 }} del {{ cuota.fecha_pago|date:'d/m/Y' }}?" data-confirm-label="Confirmar Pago">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn-mark-paid" onclick="return confirm('¿Marcar esta cuota como pagada?')">
+                                        <button type="submit" class="btn-mark-paid">
                                             Marcar Pagada
                                         </button>
                                     </form>

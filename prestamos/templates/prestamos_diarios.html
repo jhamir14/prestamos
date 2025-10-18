@@ -165,6 +165,10 @@
                             <span class="btn-icon">📅</span>
                             <span class="btn-text">Ver Calendario</span>
                         </button>
+                        <button class="btn-edit-loan" onclick="window.location.href='/editar-prestamo/{{ prestamo.id }}/'" title="Editar préstamo">
+                            <span class="btn-icon">✏️</span>
+                            <span class="btn-text">Editar</span>
+                        </button>
                         <button type="button" class="btn-delete-loan" 
                                 data-prestamo-id="{{ prestamo.id }}" 
                                 data-cliente-nombre="{{ prestamo.cliente.nombre }}" 
@@ -792,12 +796,15 @@
 }
 
 .loan-actions {
-    display: flex;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
 }
 
-.btn-view-calendar, .btn-delete-loan {
-    flex: 1;
+.btn-view-calendar, .btn-delete-loan, .btn-edit-loan {
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -830,6 +837,40 @@
 .btn-delete-loan:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+}
+
+/* Botón editar préstamo */
+.btn-edit-loan {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    background: linear-gradient(135deg, #ff8a00 0%, #e52e71 100%);
+    color: #fff;
+}
+
+.btn-edit-loan:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(229, 46, 113, 0.35);
+}
+
+.btn-edit-loan:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
+}
+
+.btn-edit-loan:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(229, 46, 113, 0.25);
 }
 
 /* Responsive design para las tarjetas */

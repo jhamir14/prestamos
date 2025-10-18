@@ -23,6 +23,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from io import BytesIO
+from django.urls import reverse
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -157,6 +158,56 @@ def registrar_prestamo(request):
                 "error": "Por favor, corrige los errores en el formulario."
             })
 
+def editar_prestamo(request, prestamo_id):
+    # Solo usuarios autenticados pueden editar préstamos
+    if not request.user.is_authenticated:
+        return redirect('signin')
+    
+    try:
+        prestamo = Prestamo.objects.get(id=prestamo_id)
+    except Prestamo.DoesNotExist:
+        messages.error(request, 'Préstamo no encontrado.')
+        return redirect('index')
+    
+    if request.method == 'GET':
+        form = PrestamoForm(instance=prestamo)
+        action_url = reverse('editar_prestamo', args=[prestamo_id])
+        return render(request, 'registrar_prestamo.html', {
+            'form': form,
+            'is_edit': True,
+            'action_url': action_url
+        })
+    else:
+        form = PrestamoForm(request.POST, instance=prestamo)
+        if form.is_valid():
+            try:
+                prestamo = form.save()
+                # Actualizar el monto de las cuotas pendientes según el nuevo monto del préstamo
+                try:
+                    nuevo_monto_por_cuota = prestamo.monto_por_cuota
+                    prestamo.cuotas.filter(pagada=False).update(monto=nuevo_monto_por_cuota)
+                except Exception as e_update:
+                    logger.error(f"Error al actualizar montos de cuotas: {e_update}")
+                    messages.warning(request, 'El préstamo se actualizó, pero hubo un problema al actualizar el monto de algunas cuotas.')
+                else:
+                    messages.success(request, f'Préstamo actualizado y montos de cuotas pendientes sincronizados para {prestamo.cliente.nombre}.')
+                return redirect('calendario_pagos', prestamo_id=prestamo.id)
+            except Exception as e:
+                logger.error(f"Error al actualizar préstamo: {e}")
+                return render(request, 'registrar_prestamo.html', {
+                    'form': form,
+                    'is_edit': True,
+                    'action_url': reverse('editar_prestamo', args=[prestamo_id]),
+                    'error': 'Error al actualizar el préstamo. Inténtalo de nuevo.'
+                })
+        else:
+            return render(request, 'registrar_prestamo.html', {
+                'form': form,
+                'is_edit': True,
+                'action_url': reverse('editar_prestamo', args=[prestamo_id]),
+                'error': 'Por favor, corrige los errores en el formulario.'
+            })
+
 def calendario_pagos(request, prestamo_id):
     # Solo usuarios autenticados pueden ver el calendario
     if not request.user.is_authenticated:
@@ -259,6 +310,25 @@ def marcar_cuota_pagada(request, cuota_id):
             cuota.fecha_pagada = datetime.now().date()
             cuota.save()
             messages.success(request, f'Cuota de ${cuota.monto} marcada como pagada.')
+        except CuotaPago.DoesNotExist:
+            messages.error(request, 'Cuota no encontrada.')
+    
+    # Redirigir de vuelta al calendario
+    return redirect('calendario_pagos', prestamo_id=cuota.prestamo.id)
+
+
+def desmarcar_cuota_pagada(request, cuota_id):
+    """Desmarca una cuota como pagada"""
+    if not request.user.is_authenticated:
+        return redirect('signin')
+    
+    if request.method == 'POST':
+        try:
+            cuota = CuotaPago.objects.get(id=cuota_id)
+            cuota.pagada = False
+            cuota.fecha_pagada = None
+            cuota.save()
+            messages.success(request, f'Cuota de ${cuota.monto} desmarcada como pagada.')
         except CuotaPago.DoesNotExist:
             messages.error(request, 'Cuota no encontrada.')
     

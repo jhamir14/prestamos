@@ -4,8 +4,8 @@
 <div class="form-container">
     <div class="form-card">
         <div class="form-header">
-            <h1>Registrar Nuevo Préstamo</h1>
-            <p>Completa la información del préstamo</p>
+            <h1>{% if is_edit %}Editar Préstamo{% else %}Registrar Nuevo Préstamo{% endif %}</h1>
+            <p>{% if is_edit %}Actualiza la información del préstamo{% else %}Completa la información del préstamo{% endif %}</p>
         </div>
 
         {% if error %}
@@ -14,7 +14,7 @@
         </div>
         {% endif %}
 
-        <form class="loan-form" action="/registrar-prestamo/" method="post">
+        <form class="loan-form" action="{{ action_url|default:'/registrar-prestamo/' }}" method="post">
             {% csrf_token %}
 
             <!-- Campo de búsqueda de cliente -->
@@ -99,7 +99,7 @@
             {% endif %}
             
             <div class="form-actions">
-                <button type="submit" class="btn-submit">Registrar Préstamo</button>
+                <button type="submit" class="btn-submit">{% if is_edit %}Actualizar Préstamo{% else %}Registrar Préstamo{% endif %}</button>
                 <a href="/index/" class="btn-cancel">Cancelar</a>
             </div>
         </form>
@@ -576,42 +576,20 @@ document.addEventListener('DOMContentLoaded', function() {
 </style>
 
 <script>
-    $(document).ready(function() {
-        $('#id_cliente_busqueda').autocomplete({
-            source: function(request, response) {
-                $.ajax({
-                    url: "{% url 'buscar_clientes' %}",
-                    data: {
-                        'term': request.term
-                    },
-                    dataType: 'json',
-                    success: function(data) {
-                        response(data);
-                    }
-                });
-            },
-            minLength: 2,
-            select: function(event, ui) {
-                $('#id_cliente').val(ui.item.id);
-                return false;
-            }
-        });
-        
-        // Función para calcular quincenas totales (cada 15 días)
+    document.addEventListener('DOMContentLoaded', function() {
         function calcularQuincenasTotales(fechaInicio, fechaFin) {
             const diasTotales = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24));
             const quincenas = Math.ceil(diasTotales / 15);
-            return Math.max(1, quincenas); // Mínimo 1 quincena
+            return Math.max(1, quincenas);
         }
 
-        // Calcular días laborables (lunes a sábado) sin bucles
         function contarDiasLaborables(fechaInicio, fechaFin) {
             if (fechaFin <= fechaInicio) return 0;
             const MS_DIA = 1000 * 60 * 60 * 24;
             const totalDias = Math.ceil((fechaFin - fechaInicio) / MS_DIA);
             const inicio = new Date(fechaInicio);
-            inicio.setDate(inicio.getDate() + 1); // desde el día siguiente
-            const diaInicio = inicio.getDay(); // 0=domingo
+            inicio.setDate(inicio.getDate() + 1);
+            const diaInicio = inicio.getDay();
             const deltaPrimerDomingo = (7 - diaInicio) % 7;
             const primerDomingo = new Date(inicio);
             primerDomingo.setDate(primerDomingo.getDate() + deltaPrimerDomingo);
@@ -623,60 +601,70 @@ document.addEventListener('DOMContentLoaded', function() {
             return Math.max(0, totalDias - domingos);
         }
 
-        // Función para calcular cuotas
         function calcularCuotas() {
-            const monto = parseFloat($('#id_monto').val()) || 0;
-            const fechaPrestamo = $('#id_fecha_prestamo').val();
-            const fechaVencimiento = $('#id_fecha_vencimiento').val();
-            const formaPago = $('#id_forma_pago').val();
-            
+            const monto = parseFloat(document.getElementById('id_monto')?.value || '0') || 0;
+            const fechaPrestamo = document.getElementById('id_fecha_prestamo')?.value;
+            const fechaVencimiento = document.getElementById('id_fecha_vencimiento')?.value;
+            const formaPago = document.getElementById('id_forma_pago')?.value;
+
+            const calculadora = document.getElementById('calculadora-cuotas');
+            if (!calculadora) return;
+
             if (monto > 0 && fechaPrestamo && fechaVencimiento && formaPago) {
                 const fechaInicio = new Date(fechaPrestamo);
                 const fechaFin = new Date(fechaVencimiento);
-                
+
                 if (fechaFin <= fechaInicio) {
-                    $('#calculadora-cuotas').hide();
+                    calculadora.style.display = 'none';
                     return;
                 }
-                
-                // Calcular días totales
+
                 const diasTotales = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24));
-                
-                // Calcular número de cuotas según forma de pago
+
                 let numeroCuotas;
                 if (formaPago === 'diario') {
                     numeroCuotas = contarDiasLaborables(fechaInicio, fechaFin);
-                } else { // semanal
+                } else {
                     numeroCuotas = Math.ceil(diasTotales / 7);
                 }
-                
-                // Calcular montos con interés progresivo
+
                 const montoBase = monto;
                 const quincenasTotales = calcularQuincenasTotales(fechaInicio, fechaFin);
-                const porcentajeInteres = 0.10 * quincenasTotales; // 10% por cada quincena
+                const porcentajeInteres = 0.10 * quincenasTotales;
                 const interes = monto * porcentajeInteres;
                 const montoTotal = montoBase + interes;
                 const montoPorCuota = numeroCuotas > 0 ? montoTotal / numeroCuotas : 0;
-                
-                // Actualizar valores en la interfaz
-                $('#monto-base').text('S/ ' + montoBase.toFixed(2));
-                $('#interes').text('S/ ' + interes.toFixed(2) + ' (' + (porcentajeInteres * 100).toFixed(0) + '% - ' + quincenasTotales + ' ' + (quincenasTotales === 1 ? 'quincena' : 'quincenas') + ')');
-                $('#monto-total').text('S/ ' + montoTotal.toFixed(2));
-                $('#dias-totales').text(diasTotales + ' días');
-                $('#numero-cuotas').text(numeroCuotas);
-                $('#monto-cuota').text('S/ ' + montoPorCuota.toFixed(2));
-                
-                $('#calculadora-cuotas').show();
+
+                const montoBaseEl = document.getElementById('monto-base');
+                const interesEl = document.getElementById('interes');
+                const montoTotalEl = document.getElementById('monto-total');
+                const diasTotalesEl = document.getElementById('dias-totales');
+                const numeroCuotasEl = document.getElementById('numero-cuotas');
+                const montoCuotaEl = document.getElementById('monto-cuota');
+
+                if (montoBaseEl) montoBaseEl.textContent = 'S/ ' + montoBase.toFixed(2);
+                if (interesEl) interesEl.textContent = 'S/ ' + interes.toFixed(2) + ' (' + (porcentajeInteres * 100).toFixed(0) + '% - ' + quincenasTotales + ' ' + (quincenasTotales === 1 ? 'quincena' : 'quincenas') + ')';
+                if (montoTotalEl) montoTotalEl.textContent = 'S/ ' + montoTotal.toFixed(2);
+                if (diasTotalesEl) diasTotalesEl.textContent = diasTotales + ' días';
+                if (numeroCuotasEl) numeroCuotasEl.textContent = numeroCuotas;
+                if (montoCuotaEl) montoCuotaEl.textContent = 'S/ ' + montoPorCuota.toFixed(2);
+
+                calculadora.style.display = 'block';
             } else {
-                $('#calculadora-cuotas').hide();
+                calculadora.style.display = 'none';
             }
         }
-        
-        // Event listeners para recalcular automáticamente
-        $('#id_monto, #id_forma_pago').on('input change', calcularCuotas);
-        $('#id_fecha_prestamo, #id_fecha_vencimiento').on('change', calcularCuotas);
-        
-        // Calcular al cargar la página si hay valores
+
+        const montoInput = document.getElementById('id_monto');
+        const formaPagoSelect = document.getElementById('id_forma_pago');
+        const fechaPrestamoInput = document.getElementById('id_fecha_prestamo');
+        const fechaVencimientoInput = document.getElementById('id_fecha_vencimiento');
+
+        if (montoInput) montoInput.addEventListener('input', calcularCuotas);
+        if (formaPagoSelect) formaPagoSelect.addEventListener('change', calcularCuotas);
+        if (fechaPrestamoInput) fechaPrestamoInput.addEventListener('change', calcularCuotas);
+        if (fechaVencimientoInput) fechaVencimientoInput.addEventListener('change', calcularCuotas);
+
         calcularCuotas();
     });
 </script>

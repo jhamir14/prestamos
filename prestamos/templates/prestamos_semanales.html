@@ -165,6 +165,10 @@
                             <span class="btn-icon">📅</span>
                             <span class="btn-text">Ver Calendario</span>
                         </button>
+                        <button class="btn-edit-loan" onclick="window.location.href='/editar-prestamo/{{ prestamo.id }}/'" title="Editar préstamo">
+                            <span class="btn-icon">✏️</span>
+                            <span class="btn-text">Editar</span>
+                        </button>
                         <button type="button" class="btn-delete-loan" 
                                 data-prestamo-id="{{ prestamo.id }}" 
                                 data-cliente-nombre="{{ prestamo.cliente.nombre }}" 
@@ -959,3 +963,35 @@ function confirmarEliminacion() {
 }
 </script>
 {% endblock %}
+
+.btn-edit-loan {
+    background: linear-gradient(135deg, #ff8a00 0%, #e52e71 100%);
+    color: #fff;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.3s ease, filter 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-edit-loan:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(229, 46, 113, 0.35);
+    filter: brightness(1.05);
+}
+
+.btn-edit-loan:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
+}
+
+.btn-edit-loan:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(229, 46, 113, 0.25);
+}
+</style>

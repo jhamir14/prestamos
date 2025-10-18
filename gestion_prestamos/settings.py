@@ -93,10 +93,10 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.mysql',
             'NAME': os.environ.get('DB_NAME', 'prestamos'),
-            'USER': os.environ.get('DB_USER', 'jhamir'),
+            'USER': os.environ.get('DB_USER', 'root'),
             'PASSWORD': os.environ.get('DB_PASSWORD', '261401'),
-            'HOST': os.environ.get('DB_HOST', 'localhost'),
-            'PORT': os.environ.get('DB_PORT', ''),
+            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+            'PORT': os.environ.get('DB_PORT', '3307'),
             'CONN_MAX_AGE': 300,
             'OPTIONS': {
                 'charset': 'utf8mb4',
