@@ -5,7 +5,12 @@ Adaptado para VPS con MySQL y logging silencioso en consola.
 
 from pathlib import Path
 import os
-from dotenv import load_dotenv
+# Opcional: cargar dotenv si está disponible
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(*args, **kwargs):
+        return False
 import dj_database_url
 
 try:
