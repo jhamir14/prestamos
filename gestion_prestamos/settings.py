@@ -6,12 +6,19 @@ Adaptado para VPS con MySQL y logging silencioso en consola.
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import dj_database_url
+
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except Exception:
+    pass
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Cargar variables de entorno desde .env en el directorio del proyecto
-load_dotenv(dotenv_path=str(BASE_DIR / '.env'), override=True)
+# Cargar variables de entorno desde .env
+load_dotenv(BASE_DIR.parent / '.env')
 
 # SECURITY
 SECRET_KEY = os.environ.get('SECRET_KEY', default='django-insecure-dev-key-change-in-production-1234567890')
@@ -60,41 +67,44 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'gestion_prestamos.wsgi.application'
 
-# Database (MySQL para VPS)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME', 'prestamos'),
-        'USER': os.environ.get('DB_USER', 'root'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', '261401'),
-        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DB_PORT', '3306'),
-        'CONN_MAX_AGE': 300,
-        'OPTIONS': {
+# Database (MySQL configurable por URL)
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+
+if DATABASE_URL:
+    # Usar DATABASE_URL (mysql://user:pass@host:port/db)
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=False,  # Cambia a True si tu servidor MySQL requiere SSL
+        )
+    }
+    # Asegurar opciones MySQL
+    if DATABASES['default']['ENGINE'] == 'django.db.backends.mysql':
+        DATABASES['default'].setdefault('OPTIONS', {})
+        DATABASES['default']['OPTIONS'].update({
             'charset': 'utf8mb4',
             'use_unicode': True,
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
-    }
-}
-
-# Si existe DATABASE_URL, úsalo para configurar la base de datos (soporte MySQL/PostgreSQL)
-try:
-    import dj_database_url
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url:
-        db_config = dj_database_url.parse(db_url, conn_max_age=300)
-        # Mantener opciones útiles para MySQL
-        if db_config.get('ENGINE') == 'django.db.backends.mysql':
-            db_config.setdefault('OPTIONS', {})
-            db_config['OPTIONS'].update({
+        })
+else:
+    # Fallback a variables específicas (útil en desarrollo)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DB_NAME', 'prestamos'),
+            'USER': os.environ.get('DB_USER', 'jhamir'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', '261401'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', ''),
+            'CONN_MAX_AGE': 300,
+            'OPTIONS': {
                 'charset': 'utf8mb4',
                 'use_unicode': True,
                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            })
-        DATABASES['default'] = db_config
-except Exception:
-    pass
+            },
+        }
+    }
 
 # Intentar conexión inicial sin mostrar errores
 try:

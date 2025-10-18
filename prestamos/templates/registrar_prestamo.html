@@ -647,7 +647,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (formaPago === 'diario') {
                     numeroCuotas = contarDiasLaborables(fechaInicio, fechaFin);
                 } else { // semanal
-                    numeroCuotas = Math.max(1, Math.ceil(diasTotales / 7));
+                    numeroCuotas = Math.ceil(diasTotales / 7);
                 }
                 
                 // Calcular montos con interés progresivo

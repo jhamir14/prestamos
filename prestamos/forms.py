@@ -27,10 +27,10 @@ class PrestamoForm(ModelForm):
         fields = ['cliente', 'monto', 'fecha_prestamo', 'fecha_vencimiento', 'forma_pago']
         widgets = {
             'cliente': forms.Select(attrs={'class': 'form-control', 'id': 'id_cliente', 'style': 'display: none;'}),
-            'fecha_prestamo': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'id': 'id_fecha_prestamo', 'class': 'form-control', 'aria-label': 'Fecha del préstamo', 'title': 'Selecciona la fecha del préstamo'}),
-            'fecha_vencimiento': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'id': 'id_fecha_vencimiento', 'class': 'form-control', 'aria-label': 'Fecha de vencimiento', 'title': 'Ajusta la fecha de vencimiento'}),
-            'monto': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'placeholder': 'Ej. 500.00', 'inputmode': 'decimal', 'autocomplete': 'off', 'aria-label': 'Monto del préstamo'}),
-            'forma_pago': forms.Select(attrs={'class': 'form-control', 'aria-label': 'Forma de pago'}),
+            'fecha_prestamo': forms.DateInput(attrs={'type': 'date', 'id': 'id_fecha_prestamo', 'class': 'form-control'}),
+            'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'id': 'id_fecha_vencimiento', 'class': 'form-control'}),
+            'monto': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'forma_pago': forms.Select(attrs={'class': 'form-control'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -42,18 +42,6 @@ class PrestamoForm(ModelForm):
             
             self.fields['fecha_prestamo'].initial = fecha_actual
             self.fields['fecha_vencimiento'].initial = fecha_vencimiento
-        else:
-            # Asegurar que en edición se muestren las fechas del préstamo
-            if self.instance.fecha_prestamo:
-                self.fields['fecha_prestamo'].initial = self.instance.fecha_prestamo
-            if self.instance.fecha_vencimiento:
-                self.fields['fecha_vencimiento'].initial = self.instance.fecha_vencimiento
-            if self.instance.forma_pago:
-                self.fields['forma_pago'].initial = self.instance.forma_pago
-
-        # Asegurar formato compatible con input type=date
-        self.fields['fecha_prestamo'].input_formats = ['%Y-%m-%d']
-        self.fields['fecha_vencimiento'].input_formats = ['%Y-%m-%d']
         
         # Agregar ayuda para los campos
         self.fields['fecha_vencimiento'].help_text = "El número de cuotas se calculará automáticamente según esta fecha y la modalidad de pago. El interés es quincenal y progresivo: 10% por cada 15 días; desde 16 días ya es 20%, y así sucesivamente."
