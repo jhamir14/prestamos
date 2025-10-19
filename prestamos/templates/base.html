@@ -276,6 +276,78 @@
             window.location.href = '/logout/';
         }
         
+        // Persistir la página previa al entrar al calendario
+        document.addEventListener('click', function(e) {
+            const a = e.target.closest('a[href]');
+            if (!a) return;
+            try {
+                const href = a.getAttribute('href');
+                const url = new URL(href, window.location.href);
+                if (/\/calendario-pagos\//.test(url.pathname)) {
+                    sessionStorage.setItem('backTarget', window.location.href);
+                }
+            } catch(err) {}
+        }, true);
+
+        // Función global para volver evitando endpoints de acción y bucles del calendario
+        function goBack(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            // 1) Usar destino persistido si existe
+            var saved = null;
+            try { saved = sessionStorage.getItem('backTarget'); } catch(err) { saved = null; }
+            if (saved) {
+                try {
+                    var savedUrl = new URL(saved, window.location.href);
+                    if (savedUrl.origin === window.location.origin) {
+                        sessionStorage.removeItem('backTarget');
+                        window.location.href = saved;
+                        return false;
+                    }
+                } catch(err) {}
+            }
+            // 2) Analizar referrer
+            var ref = document.referrer || '';
+            var sameOrigin = false;
+            var isActionRef = false;
+            var isCalendarRef = false;
+            try {
+                if (ref) {
+                    var url = new URL(ref);
+                    sameOrigin = url.origin === window.location.origin;
+                    var path = url.pathname || '';
+                    // Detectar endpoints de acción (marcar/desmarcar/cancelar/descargar)
+                    isActionRef = /(marcar|desmarcar|cancelar)-/.test(path) || /descargar-calendario/.test(path);
+                    isCalendarRef = /\/calendario-pagos\//.test(path);
+                }
+            } catch (err) {
+                sameOrigin = false;
+                isActionRef = false;
+                isCalendarRef = false;
+            }
+            if (sameOrigin && !isActionRef && !isCalendarRef) {
+                window.location.href = ref;
+                return false;
+            }
+            // 3) Evitar bucles de recargas del calendario saltando tres pasos si es posible
+            if (window.history.length > 3) {
+                window.history.go(-3);
+                return false;
+            }
+            // Si no, saltar dos pasos para evitar el endpoint de acción
+            if (window.history.length > 2) {
+                window.history.go(-2);
+                return false;
+            }
+            // Último recurso: retroceder uno
+            if (window.history.length > 1) {
+                window.history.back();
+                return false;
+            }
+            // Fallback: ir al panel si no hay historial
+            window.location.href = "{% url 'index' %}";
+            return false;
+        }
+        
         // Cerrar modal al hacer clic fuera de él
         document.getElementById('logoutModal').addEventListener('click', function(e) {
             if (e.target === this) {

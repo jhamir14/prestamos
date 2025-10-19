@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.gzip.GZipMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -102,7 +103,7 @@ else:
             'PASSWORD': os.environ.get('DB_PASSWORD', '261401'),
             'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
             'PORT': os.environ.get('DB_PORT', '3307'),
-            'CONN_MAX_AGE': 300,
+            'CONN_MAX_AGE': 600,
             'OPTIONS': {
                 'charset': 'utf8mb4',
                 'use_unicode': True,
@@ -184,4 +185,12 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+# Caché local en memoria para acelerar vistas frecuentes
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'prestamos-cache',
+    }
 }

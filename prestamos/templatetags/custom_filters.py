@@ -15,3 +15,11 @@ def days_overdue(payment_date):
         return f"{delta.days} días"
     else:
         return "Hoy"
+
+@register.filter
+def dict_get(d, key):
+    """Accede a d[key] en plantillas; devuelve [] si no existe"""
+    try:
+        return d.get(key, [])
+    except AttributeError:
+        return []

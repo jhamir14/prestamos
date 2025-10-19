@@ -24,6 +24,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from io import BytesIO
 from django.urls import reverse
+from django.views.decorators.cache import cache_page
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ def signup(request):
                 "error": "Por favor, corrige los errores en el formulario."
             }) 
 
+@cache_page(20)
 def index(request):
     # Solo usuarios autenticados pueden ver el panel
     if not request.user.is_authenticated:
@@ -67,11 +69,11 @@ def index(request):
     # Obtener parámetro de búsqueda
     search_query = request.GET.get('search', '')
     
+    qs = Prestamo.objects.select_related('cliente')
     if search_query:
-        # Buscar por nombre del cliente
-        prestamos = Prestamo.objects.filter(cliente__nombre__icontains=search_query)
+        prestamos = qs.filter(cliente__nombre__icontains=search_query)
     else:
-        prestamos = Prestamo.objects.all()
+        prestamos = qs.all()
 
     return render(request, 'index.html', {
         'prestamos': prestamos,
@@ -208,13 +210,14 @@ def editar_prestamo(request, prestamo_id):
                 'error': 'Por favor, corrige los errores en el formulario.'
             })
 
+@cache_page(20)
 def calendario_pagos(request, prestamo_id):
     # Solo usuarios autenticados pueden ver el calendario
     if not request.user.is_authenticated:
         return redirect('signin')
     
     try:
-        prestamo = Prestamo.objects.get(id=prestamo_id)
+        prestamo = Prestamo.objects.select_related('cliente').get(id=prestamo_id)
     except Prestamo.DoesNotExist:
         messages.error(request, 'Préstamo no encontrado.')
         return redirect('index')
@@ -247,8 +250,20 @@ def calendario_pagos(request, prestamo_id):
     cal = calendar.monthcalendar(year, month)
     month_name = calendar.month_name[month]
     
-    # Obtener todas las cuotas del préstamo
-    cuotas = prestamo.cuotas.all().order_by('fecha_pago')
+    # Obtener cuotas del préstamo para el mes/año seleccionados
+    cuotas = (
+        prestamo.cuotas
+        .filter(fecha_pago__year=year, fecha_pago__month=month)
+        .select_related('prestamo')
+        .only('id', 'prestamo_id', 'fecha_pago', 'monto', 'pagada', 'fecha_pagada', 'tipo_cuota')
+        .order_by('fecha_pago')
+    )
+
+    # Mapear cuotas por día para evitar bucles anidados en plantilla
+    cuotas_por_dia = {}
+    for cuota in cuotas:
+        d = cuota.fecha_pago.day
+        cuotas_por_dia.setdefault(d, []).append(cuota)
     
     context = {
         'prestamo': prestamo,
@@ -257,6 +272,7 @@ def calendario_pagos(request, prestamo_id):
         'month': month,
         'year': year,
         'cuotas': cuotas,
+        'cuotas_por_dia': cuotas_por_dia,
         'now': now,
     }
     
@@ -349,17 +365,14 @@ def prestamos_diarios(request):
     # Obtener parámetro de búsqueda
     search_query = request.GET.get('search', '')
     
+    qs = Prestamo.objects.select_related('cliente').filter(forma_pago='diario')
     if search_query:
-        # Buscar por nombre del cliente en préstamos diarios
-        prestamos = Prestamo.objects.filter(
-            cliente__nombre__icontains=search_query,
-            forma_pago='diario'
-        )
+        prestamos = qs.filter(cliente__nombre__icontains=search_query)
     else:
-        prestamos = Prestamo.objects.filter(forma_pago='diario')
+        prestamos = qs
 
-    # Calcular el total de dinero prestado
-    total_prestado = sum(prestamo.monto for prestamo in prestamos)
+    # Calcular el total de dinero prestado con agregación
+    total_prestado = prestamos.aggregate(total=Sum('monto'))['total'] or 0
 
     return render(request, 'prestamos_diarios.html', {
         'prestamos': prestamos,
@@ -377,17 +390,14 @@ def prestamos_semanales(request):
     # Obtener parámetro de búsqueda
     search_query = request.GET.get('search', '')
     
+    qs = Prestamo.objects.select_related('cliente').filter(forma_pago='semanal')
     if search_query:
-        # Buscar por nombre del cliente en préstamos semanales
-        prestamos = Prestamo.objects.filter(
-            cliente__nombre__icontains=search_query,
-            forma_pago='semanal'
-        )
+        prestamos = qs.filter(cliente__nombre__icontains=search_query)
     else:
-        prestamos = Prestamo.objects.filter(forma_pago='semanal')
+        prestamos = qs
 
-    # Calcular el total de dinero prestado
-    total_prestado = sum(prestamo.monto for prestamo in prestamos)
+    # Calcular el total de dinero prestado con agregación
+    total_prestado = prestamos.aggregate(total=Sum('monto'))['total'] or 0
 
     return render(request, 'prestamos_semanales.html', {
         'prestamos': prestamos,
@@ -396,6 +406,7 @@ def prestamos_semanales(request):
         'total_prestado': total_prestado
     })
 
+@cache_page(30)
 def reporte_pagos(request):
     """Muestra un reporte de pagos que vencen hoy y préstamos con cuotas retrasadas"""
     # Solo usuarios autenticados pueden ver el reporte
@@ -405,55 +416,28 @@ def reporte_pagos(request):
     try:
         # Obtener la fecha actual
         hoy = date.today()
-        
-        # Inicializar variables con valores por defecto
-        cuotas_vencidas_hoy = []
-        cuotas_retrasadas = []
-        total_cuotas_hoy = 0
-        total_monto_hoy = 0
-        total_cuotas_retrasadas = 0
-        total_monto_retrasadas = 0
-        prestamos_activos = 0
-        prestamos_diarios_activos = 0
-        prestamos_semanales_activos = 0
-        cuotas_pagadas_hoy = 0
-        
-        try:
-            # Buscar cuotas que vencen hoy y no han sido pagadas (tanto diarias como semanales)
-            cuotas_vencidas_hoy = CuotaPago.objects.filter(
-                fecha_pago=hoy,
-                pagada=False
-            ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre')
-            
-            # Buscar préstamos con cuotas retrasadas (fecha de pago menor a hoy y no pagadas)
-            cuotas_retrasadas = CuotaPago.objects.filter(
-                fecha_pago__lt=hoy,
-                pagada=False
-            ).select_related('prestamo__cliente').order_by('prestamo__cliente__nombre', 'fecha_pago')
-            
-            # Calcular totales para cuotas de hoy
-            total_cuotas_hoy = cuotas_vencidas_hoy.count()
-            total_monto_hoy = cuotas_vencidas_hoy.aggregate(total=Sum('monto'))['total'] or 0
-            
-            # Calcular totales para cuotas retrasadas
-            total_cuotas_retrasadas = cuotas_retrasadas.count()
-            total_monto_retrasadas = cuotas_retrasadas.aggregate(total=Sum('monto'))['total'] or 0
-            
-            # Obtener estadísticas adicionales
-            prestamos_activos = Prestamo.objects.filter(estado=False).count()
-            prestamos_diarios_activos = Prestamo.objects.filter(forma_pago='diario', estado=False).count()
-            prestamos_semanales_activos = Prestamo.objects.filter(forma_pago='semanal', estado=False).count()
-            
-            cuotas_pagadas_hoy = CuotaPago.objects.filter(
-                fecha_pago=hoy,
-                pagada=True
-            ).count()
-            
-        except Exception as e:
-            # Si hay error en las consultas, usar valores por defecto
-            logger.error(f"Error en consultas de reporte: {e}")
-            messages.warning(request, 'Hubo un problema al cargar algunos datos del reporte.')
-        
+        # Consultas optimizadas con select_related y campos necesarios
+        cuotas_vencidas_hoy = (
+            CuotaPago.objects
+            .filter(fecha_pago=hoy, pagada=False)
+            .select_related('prestamo__cliente')
+            .order_by('prestamo__cliente__nombre')
+        )
+        cuotas_retrasadas = (
+            CuotaPago.objects
+            .filter(fecha_pago__lt=hoy, pagada=False)
+            .select_related('prestamo__cliente')
+            .order_by('prestamo__cliente__nombre', 'fecha_pago')
+        )
+        # Calcular totales usando agregaciones
+        total_cuotas_hoy = cuotas_vencidas_hoy.count()
+        total_monto_hoy = cuotas_vencidas_hoy.aggregate(total=Sum('monto'))['total'] or 0
+        total_cuotas_retrasadas = cuotas_retrasadas.count()
+        total_monto_retrasadas = cuotas_retrasadas.aggregate(total=Sum('monto'))['total'] or 0
+        prestamos_activos = Prestamo.objects.filter(estado=False).count()
+        prestamos_diarios_activos = Prestamo.objects.filter(forma_pago='diario', estado=False).count()
+        prestamos_semanales_activos = Prestamo.objects.filter(forma_pago='semanal', estado=False).count()
+        cuotas_pagadas_hoy = CuotaPago.objects.filter(fecha_pago=hoy, pagada=True).count()
         context = {
             'cuotas_vencidas_hoy': cuotas_vencidas_hoy,
             'cuotas_retrasadas': cuotas_retrasadas,
@@ -467,11 +451,8 @@ def reporte_pagos(request):
             'cuotas_pagadas_hoy': cuotas_pagadas_hoy,
             'fecha_hoy': hoy,
         }
-        
         return render(request, 'reporte_pagos.html', context)
-        
     except Exception as e:
-        # Manejo general de errores
         logger.error(f"Error general en reporte_pagos: {e}")
         messages.error(request, 'Hubo un error al cargar el reporte. Por favor, inténtalo de nuevo.')
         return redirect('index')

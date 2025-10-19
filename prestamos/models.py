@@ -22,8 +22,8 @@ class Prestamo(models.Model):
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_prestamo = models.DateField()
     fecha_vencimiento = models.DateField()
-    forma_pago = models.CharField(max_length=10, choices=FORMA_PAGO_CHOICES, default='diario')
-    estado = models.BooleanField(default=False)
+    forma_pago = models.CharField(max_length=10, choices=FORMA_PAGO_CHOICES, default='diario', db_index=True)
+    estado = models.BooleanField(default=False, db_index=True)
     
     # Eliminado meses_totales (no usado) para simplificar lógica
     
@@ -139,14 +139,19 @@ class Prestamo(models.Model):
 
 class CuotaPago(models.Model):
     prestamo = models.ForeignKey(Prestamo, on_delete=models.CASCADE, related_name='cuotas')
-    fecha_pago = models.DateField()
+    fecha_pago = models.DateField(db_index=True)
     monto = models.DecimalField(max_digits=10, decimal_places=2)
-    pagada = models.BooleanField(default=False)
+    pagada = models.BooleanField(default=False, db_index=True)
     fecha_pagada = models.DateField(null=True, blank=True)
     tipo_cuota = models.CharField(max_length=10, choices=[('diario', 'Diario'), ('semanal', 'Semanal')])
     
     class Meta:
         unique_together = ['prestamo', 'fecha_pago']
+        indexes = [
+            models.Index(fields=['prestamo', 'fecha_pago']),
+            models.Index(fields=['prestamo', 'pagada']),
+            models.Index(fields=['fecha_pago', 'pagada']),
+        ]
     
     def __str__(self):
         return f"{self.prestamo.cliente.nombre} - {self.fecha_pago} - ${self.monto}"
