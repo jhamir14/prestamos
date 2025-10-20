@@ -55,7 +55,7 @@
             <div class="stat-info">
                 <h3>Clientes</h3>
                 <p>Gestiona la información de tus clientes</p>
-                <a href="/registrar-cliente/" class="stat-link">Registrar Cliente</a>
+                <a href="{% url 'registrar_cliente' %}" class="stat-link">Registrar Cliente</a>
             </div>
         </div>
         
@@ -64,7 +64,7 @@
             <div class="stat-info">
                 <h3>Préstamos</h3>
                 <p>Administra los préstamos activos</p>
-                <a href="/registrar-prestamo/" class="stat-link">Registrar Préstamo</a>
+                <a href="{% url 'registrar_prestamo' %}" class="stat-link">Registrar Préstamo</a>
             </div>
         </div>
         
@@ -73,7 +73,7 @@
             <div class="stat-info">
                 <h3>Usuarios</h3>
                 <p>Gestiona los usuarios del sistema</p>
-                <a href="/signup/" class="stat-link">Crear Usuario</a>
+                <a href="{% url 'signup' %}" class="stat-link">Crear Usuario</a>
             </div>
         </div>
     </div>
@@ -87,7 +87,7 @@
                            value="{{ search_query }}" class="search-input">
                     <button type="submit" class="search-btn">🔍</button>
                     {% if search_query %}
-                        <a href="/index/" class="clear-search">Limpiar</a>
+                        <a href="{% url 'index' %}" class="clear-search">Limpiar</a>
                     {% endif %}
                 </form>
             </div>
@@ -117,14 +117,14 @@
                                 S/{{ prestamo.cuota_semanal|floatformat:2 }} semanal
                             {% endif %}
                         </p>
-                        <p><strong>Período:</strong> {{ prestamo.fecha_prestamo }} al {{ prestamo.fecha_vencimiento }}</p>
+                        <p><strong>Período:</strong> {{ prestamo.fecha_prestamo|date:"d/m/Y" }} al {{ prestamo.fecha_vencimiento|date:"d/m/Y" }}</p>
                         <p><strong>Cliente:</strong> {{ prestamo.cliente.email }}</p>
                     </div>
                     <div class="loan-actions">
-                        <button class="btn-view-calendar" onclick="window.location.href='/calendario-pagos/{{ prestamo.id }}/'">
+                        <button class="btn-view-calendar" onclick="window.location.href='{% url 'calendario_pagos' prestamo.id %}'">
                             📅 Ver Calendario
                         </button>
-                        <button class="btn-edit-loan" onclick="window.location.href='/editar-prestamo/{{ prestamo.id }}/'" title="Editar préstamo">
+                        <button class="btn-edit-loan" onclick="window.location.href='{% url 'editar_prestamo' prestamo.id %}'" title="Editar préstamo">
                             ✏️ Editar
                         </button>
                         <button type="button" class="btn-delete-loan" 
@@ -143,7 +143,7 @@
                 <div class="empty-icon">📋</div>
                 <h3>No hay préstamos registrados</h3>
                 <p>Comienza registrando tu primer préstamo</p>
-                <a href="/registrar-prestamo/" class="btn-primary">Registrar Préstamo</a>
+                <a href="{% url 'registrar_prestamo' %}" class="btn-primary">Registrar Préstamo</a>
             </div>
         {% endif %}
     </div>

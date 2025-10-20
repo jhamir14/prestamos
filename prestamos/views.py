@@ -24,7 +24,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from io import BytesIO
 from django.urls import reverse
-from django.views.decorators.cache import cache_page
+from django.views.decorators.cache import cache_page, never_cache
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -210,7 +210,6 @@ def editar_prestamo(request, prestamo_id):
                 'error': 'Por favor, corrige los errores en el formulario.'
             })
 
-@cache_page(20)
 def calendario_pagos(request, prestamo_id):
     # Solo usuarios autenticados pueden ver el calendario
     if not request.user.is_authenticated:
@@ -318,38 +317,66 @@ def marcar_cuota_pagada(request, cuota_id):
     """Marca una cuota como pagada"""
     if not request.user.is_authenticated:
         return redirect('signin')
-    
-    if request.method == 'POST':
+
+    # Resolver de forma segura el préstamo asociado para redirección
+    prestamo_id = (
+        CuotaPago.objects
+        .filter(id=cuota_id)
+        .values_list('prestamo_id', flat=True)
+        .first()
+    )
+
+    if request.method == 'POST' and prestamo_id:
         try:
             cuota = CuotaPago.objects.get(id=cuota_id)
-            cuota.pagada = True
-            cuota.fecha_pagada = datetime.now().date()
-            cuota.save()
-            messages.success(request, f'Cuota de ${cuota.monto} marcada como pagada.')
+            if cuota.prestamo.estado:
+                messages.error(request, 'El préstamo está cancelado.')
+            else:
+                if not cuota.pagada:
+                    cuota.pagada = True
+                    cuota.fecha_pagada = datetime.now().date()
+                    cuota.save(update_fields=['pagada', 'fecha_pagada'])
+                messages.success(request, f'Cuota de S/{cuota.monto} marcada como pagada.')
         except CuotaPago.DoesNotExist:
             messages.error(request, 'Cuota no encontrada.')
-    
-    # Redirigir de vuelta al calendario
-    return redirect('calendario_pagos', prestamo_id=cuota.prestamo.id)
+
+    # Redirigir de vuelta al calendario o al índice si no existe
+    if prestamo_id:
+        return redirect('calendario_pagos', prestamo_id=prestamo_id)
+    return redirect('index')
 
 
 def desmarcar_cuota_pagada(request, cuota_id):
     """Desmarca una cuota como pagada"""
     if not request.user.is_authenticated:
         return redirect('signin')
-    
-    if request.method == 'POST':
+
+    # Resolver de forma segura el préstamo asociado para redirección
+    prestamo_id = (
+        CuotaPago.objects
+        .filter(id=cuota_id)
+        .values_list('prestamo_id', flat=True)
+        .first()
+    )
+
+    if request.method == 'POST' and prestamo_id:
         try:
             cuota = CuotaPago.objects.get(id=cuota_id)
-            cuota.pagada = False
-            cuota.fecha_pagada = None
-            cuota.save()
-            messages.success(request, f'Cuota de ${cuota.monto} desmarcada como pagada.')
+            if cuota.prestamo.estado:
+                messages.error(request, 'El préstamo está cancelado.')
+            else:
+                if cuota.pagada:
+                    cuota.pagada = False
+                    cuota.fecha_pagada = None
+                    cuota.save(update_fields=['pagada', 'fecha_pagada'])
+                messages.success(request, f'Cuota de S/{cuota.monto} desmarcada como pagada.')
         except CuotaPago.DoesNotExist:
             messages.error(request, 'Cuota no encontrada.')
-    
-    # Redirigir de vuelta al calendario
-    return redirect('calendario_pagos', prestamo_id=cuota.prestamo.id)
+
+    # Redirigir de vuelta al calendario o al índice si no existe
+    if prestamo_id:
+        return redirect('calendario_pagos', prestamo_id=prestamo_id)
+    return redirect('index')
 
 def signout(request):
     logout(request)
@@ -406,7 +433,7 @@ def prestamos_semanales(request):
         'total_prestado': total_prestado
     })
 
-@cache_page(30)
+@never_cache
 def reporte_pagos(request):
     """Muestra un reporte de pagos que vencen hoy y préstamos con cuotas retrasadas"""
     # Solo usuarios autenticados pueden ver el reporte

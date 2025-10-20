@@ -13,6 +13,14 @@
             <strong>Error:</strong> {{ error }}
         </div>
         {% endif %}
+        
+        {% if is_edit %}
+        <div class="info-dates">
+            <div class="info-dates-title">Fechas registradas</div>
+            <div class="info-dates-row"><span class="label">Inicio:</span> <span class="value">{{ form.instance.fecha_prestamo|date:"d/m/Y" }}</span></div>
+            <div class="info-dates-row"><span class="label">Fin:</span> <span class="value">{{ form.instance.fecha_vencimiento|date:"d/m/Y" }}</span></div>
+        </div>
+        {% endif %}
 
         <form class="loan-form" action="{{ action_url|default:'/registrar-prestamo/' }}" method="post">
             {% csrf_token %}
@@ -357,6 +365,16 @@
 document.addEventListener('DOMContentLoaded', function() {
     const fechaPrestamoInput = document.getElementById('id_fecha_prestamo');
     const fechaVencimientoInput = document.getElementById('id_fecha_vencimiento');
+
+    {% if is_edit %}
+    // Asegurar que en edición se muestren las fechas registradas si están vacías
+    if (fechaPrestamoInput && !fechaPrestamoInput.value) {
+        fechaPrestamoInput.value = "{{ form.instance.fecha_prestamo|date:'Y-m-d' }}";
+    }
+    if (fechaVencimientoInput && !fechaVencimientoInput.value) {
+        fechaVencimientoInput.value = "{{ form.instance.fecha_vencimiento|date:'Y-m-d' }}";
+    }
+    {% endif %}
     
     // Función para calcular la fecha de vencimiento (30 días después)
     function calcularFechaVencimiento(fechaPrestamo) {
@@ -376,12 +394,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Establecer fechas iniciales si están vacías
+    {% if not is_edit %}
+    // Establecer fechas iniciales si están vacías (solo en creación)
     if (!fechaPrestamoInput.value) {
         const hoy = new Date().toISOString().split('T')[0];
         fechaPrestamoInput.value = hoy;
         fechaVencimientoInput.value = calcularFechaVencimiento(hoy);
     }
+    {% endif %}
     
     // Funcionalidad de autocompletado para clientes
     const clienteBusquedaInput = document.getElementById('cliente-busqueda');
