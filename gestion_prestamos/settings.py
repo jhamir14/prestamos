@@ -74,41 +74,36 @@ TEMPLATES = [
 WSGI_APPLICATION = 'gestion_prestamos.wsgi.application'
 
 # Database (MySQL configurable por URL)
-DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+RAW_DB_URL = (
+    os.environ.get('DATABASE_URL', '').strip()
+    or os.environ.get('MYSQL_URL', '').strip()
+    or os.environ.get('MYSQL_PUBLIC_URL', '').strip()
+)
 
-if DATABASE_URL:
-    # Usar DATABASE_URL (mysql://user:pass@host:port/db)
-    DATABASES = {
-        'default': dj_database_url.parse(
-            DATABASE_URL,
+try:
+    if RAW_DB_URL:
+        db_config = dj_database_url.parse(
+            RAW_DB_URL,
             conn_max_age=600,
-            ssl_require=False,  # Cambia a True si tu servidor MySQL requiere SSL
+            ssl_require=False,  # Cambiar a True si MySQL exige SSL
         )
-    }
-    # Asegurar opciones MySQL
-    if DATABASES['default']['ENGINE'] == 'django.db.backends.mysql':
-        DATABASES['default'].setdefault('OPTIONS', {})
-        DATABASES['default']['OPTIONS'].update({
+        # Asegurar motor MySQL
+        db_config['ENGINE'] = 'django.db.backends.mysql'
+        db_config.setdefault('OPTIONS', {})
+        db_config['OPTIONS'].update({
             'charset': 'utf8mb4',
             'use_unicode': True,
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         })
-else:
-    # Fallback a variables específicas (útil en desarrollo)
+        DATABASES = {'default': db_config}
+    else:
+        raise ValueError('DATABASE_URL / MYSQL_URL no configurado')
+except Exception as exc:
+    print(f"⚠️  No se pudo usar la base remota ({exc}). Se usará SQLite local.")
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.environ.get('DB_NAME', 'prestamos'),
-            'USER': os.environ.get('DB_USER', 'root'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', '261401'),
-            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-            'PORT': os.environ.get('DB_PORT', '3307'),
-            'CONN_MAX_AGE': 600,
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-                'use_unicode': True,
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 
