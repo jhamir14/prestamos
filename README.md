@@ -7,7 +7,7 @@ Este proyecto es una aplicación web desarrollada en Django para la gestión de 
 *   **Backend:** Python 3.13, Django 5.2.5
 *   **Base de Datos:**
     *   Desarrollo: SQLite
-    *   Producción: PostgreSQL (vía Render)
+    *   Producción: MySQL (vía Railway)
 *   **Servidor Web:** Gunicorn
 *   **Archivos Estáticos:** Whitenoise
 *   **Generación de PDF:** ReportLab
@@ -50,39 +50,7 @@ Muestra el flujo desde que el administrador envía el formulario hasta que se ge
 
 Muestra cómo el sistema procesa el pago de una cuota específica.
 
-```plantuml
-@startuml
-actor Administrador
-participant "Vista\n(marcar_cuota_pagada)" as View
-participant "Modelo\n(CuotaPago)" as Cuota
-database "Base de Datos" as DB
-
-Administrador -> View: Clic en "Pagar" (POST)
-activate View
-
-View -> Cuota: get(id=cuota_id)
-activate Cuota
-Cuota -> DB: SELECT * FROM CuotaPago WHERE id=...
-DB --> Cuota: Datos Cuota
-Cuota --> View: Instancia Cuota
-deactivate Cuota
-
-alt Préstamo Activo
-    View -> Cuota: pagada = True
-    View -> Cuota: fecha_pagada = Hoy
-    View -> Cuota: save()
-    activate Cuota
-    Cuota -> DB: UPDATE CuotaPago SET pagada=1...
-    deactivate Cuota
-    
-    View -> Administrador: Redirigir a Calendario (Mensaje Éxito)
-else Préstamo Cancelado
-    View -> Administrador: Redirigir con Error
-end
-
-deactivate View
-@enduml
-```
+![Diagrama de Secuencia](IMG/Prestamos-cuota-secuencia.png)
 
 ## 💻 Ejecución Local
 
