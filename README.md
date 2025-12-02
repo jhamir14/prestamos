@@ -1,3 +1,5 @@
+# Hola
+
 # Sistema de Gestión de Préstamos
 
 Este proyecto es una aplicación web desarrollada en Django para la gestión de préstamos, clientes y control de pagos. Permite administrar préstamos diarios y semanales, generar calendarios de pagos, y realizar un seguimiento de las cuotas.
