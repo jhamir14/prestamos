@@ -32,9 +32,11 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+from django.urls import path, include, re_path
+
 urlpatterns = [
     path('', RedirectView.as_view(url='admin/', permanent=False)), # Redirect root to admin
-    path('healthz/', health_check), # Health check endpoint
+    re_path(r'^healthz/?$', health_check), # Health check endpoint (flexible slash)
     path('admin/', admin.site.urls),
     path('api/users/', include('users.urls')),
     path('api/inventory/', include('inventory.urls')),
