@@ -1,7 +1,7 @@
 Django==4.2.16
 djangorestframework
 django-cors-headers
-rest_framework_simplejwt
+djangorestframework-simplejwt
 gunicorn
 mysqlclient
 dj-database-url
