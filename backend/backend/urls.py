@@ -21,6 +21,11 @@ from django.contrib import admin
 from django.urls import path, include
 
 from django.urls import path, include
+from django.http import HttpResponse
+
+def health_check(request):
+    return HttpResponse("OK")
+
 from django.views.generic import RedirectView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -29,6 +34,7 @@ from rest_framework_simplejwt.views import (
 
 urlpatterns = [
     path('', RedirectView.as_view(url='admin/', permanent=False)), # Redirect root to admin
+    path('healthz/', health_check), # Health check endpoint
     path('admin/', admin.site.urls),
     path('api/users/', include('users.urls')),
     path('api/inventory/', include('inventory.urls')),
