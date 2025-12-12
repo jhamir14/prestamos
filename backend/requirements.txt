@@ -8,3 +8,5 @@ dj-database-url
 whitenoise
 psycopg2-binary
 reportlab
+cloudinary
+django-cloudinary-storage

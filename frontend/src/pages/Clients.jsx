@@ -39,6 +39,7 @@ const Clients = () => {
         });
         setEditingId(client.id);
         setShowForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleSubmit = (e) => {
