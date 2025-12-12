@@ -3,6 +3,7 @@ from .models import Device, DeviceSale, DeviceInstallment
 from core.utils import generate_payment_schedule
 from datetime import date
 
+class DeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Device
         fields = '__all__'
