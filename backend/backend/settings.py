@@ -34,7 +34,12 @@ if RENDER_EXTERNAL_HOSTNAME:
 
 CSRF_TRUSTED_ORIGINS = []
 if 'CSRF_TRUSTED_ORIGINS' in os.environ:
-    CSRF_TRUSTED_ORIGINS = os.environ['CSRF_TRUSTED_ORIGINS'].split(',')
+    origins = os.environ['CSRF_TRUSTED_ORIGINS'].split(',')
+    for origin in origins:
+        if not origin.startswith('http://') and not origin.startswith('https://'):
+            CSRF_TRUSTED_ORIGINS.append(f'https://{origin.strip()}')
+        else:
+            CSRF_TRUSTED_ORIGINS.append(origin.strip())
 
 
 # Application definition
