@@ -16,7 +16,7 @@ from reportlab.lib import colors
 from datetime import date
 
 class ContratoMotoViewSet(viewsets.ModelViewSet):
-    queryset = ContratoMoto.objects.all()
+    queryset = ContratoMoto.objects.select_related('cliente', 'moto').all()
     serializer_class = ContratoMotoSerializer
 
     @action(detail=True, methods=['get'])
@@ -154,7 +154,7 @@ class ContratoMotoViewSet(viewsets.ModelViewSet):
         return response
 
 class CuotaContratoViewSet(viewsets.ModelViewSet):
-    queryset = CuotaContrato.objects.all()
+    queryset = CuotaContrato.objects.select_related('contrato__cliente').all()
     serializer_class = CuotaContratoSerializer
 
     @action(detail=True, methods=['post'])

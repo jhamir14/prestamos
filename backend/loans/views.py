@@ -11,7 +11,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 
 class PrestamoViewSet(viewsets.ModelViewSet):
-    queryset = Prestamo.objects.all()
+    queryset = Prestamo.objects.select_related('cliente').all()
     serializer_class = PrestamoSerializer
 
     @action(detail=True, methods=['get'])
@@ -85,7 +85,7 @@ class PrestamoViewSet(viewsets.ModelViewSet):
         return response
 
 class CuotaPrestamoViewSet(viewsets.ModelViewSet):
-    queryset = CuotaPrestamo.objects.all()
+    queryset = CuotaPrestamo.objects.select_related('prestamo__cliente').all()
     serializer_class = CuotaPrestamoSerializer
 
     @action(detail=True, methods=['post'])

@@ -99,7 +99,7 @@ const Payments = () => {
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
                             <th className="p-4 text-left text-gray-700 dark:text-gray-200">Vencimiento</th>
-                            <th className="p-4 text-left text-gray-700 dark:text-gray-200">Tipo</th>
+                            <th className="p-4 text-left text-gray-700 dark:text-gray-200">Cliente</th>
                             <th className="p-4 text-left text-gray-700 dark:text-gray-200">Monto</th>
                             <th className="p-4 text-left text-gray-700 dark:text-gray-200">Abonado</th>
                             <th className="p-4 text-left text-gray-700 dark:text-gray-200">Pendiente</th>
@@ -114,7 +114,10 @@ const Payments = () => {
                             return (
                                 <tr key={`${item.type}-${item.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-300">
                                     <td className="p-4">{item.fecha_vencimiento}</td>
-                                    <td className="p-4">{item.type} #{item.source_id}</td>
+                                    <td className="p-4">
+                                        <div className="font-bold">{item.client_name}</div>
+                                        <div className="text-xs text-gray-500">{item.type} #{item.source_id}</div>
+                                    </td>
                                     <td className="p-4">S/ {item.monto}</td>
                                     <td className="p-4 text-green-600">S/ {abonado.toFixed(2)}</td>
                                     <td className="p-4 text-red-600">S/ {pendiente.toFixed(2)}</td>

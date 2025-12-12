@@ -3,9 +3,14 @@ from .models import Prestamo, CuotaPrestamo
 from core.utils import generate_payment_schedule
 
 class CuotaPrestamoSerializer(serializers.ModelSerializer):
+    client_name = serializers.SerializerMethodField()
+
     class Meta:
         model = CuotaPrestamo
         fields = '__all__'
+
+    def get_client_name(self, obj):
+        return f"{obj.prestamo.cliente.nombres} {obj.prestamo.cliente.apellidos}"
 
 class PrestamoSerializer(serializers.ModelSerializer):
     cuotas = CuotaPrestamoSerializer(many=True, read_only=True)

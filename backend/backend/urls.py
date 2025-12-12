@@ -21,12 +21,14 @@ from django.contrib import admin
 from django.urls import path, include
 
 from django.urls import path, include
+from django.views.generic import RedirectView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
 
 urlpatterns = [
+    path('', RedirectView.as_view(url='admin/', permanent=False)), # Redirect root to admin
     path('admin/', admin.site.urls),
     path('api/users/', include('users.urls')),
     path('api/inventory/', include('inventory.urls')),

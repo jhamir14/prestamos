@@ -4,9 +4,14 @@ from core.utils import generate_payment_schedule
 from datetime import date
 
 class CuotaContratoSerializer(serializers.ModelSerializer):
+    client_name = serializers.SerializerMethodField()
+
     class Meta:
         model = CuotaContrato
         fields = '__all__'
+
+    def get_client_name(self, obj):
+        return f"{obj.contrato.cliente.nombres} {obj.contrato.cliente.apellidos}"
 
 class ContratoMotoSerializer(serializers.ModelSerializer):
     cuotas = CuotaContratoSerializer(many=True, read_only=True)
