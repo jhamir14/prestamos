@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, filters
 from rest_framework.permissions import IsAdminUser, BasePermission
 from django.contrib.auth.models import User
 from .models import Client
@@ -8,6 +8,8 @@ from .admin_serializers import AdminUserSerializer
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['nombres', 'apellidos', 'dni']
 
 class IsSuperUser(BasePermission):
     def has_permission(self, request, view):

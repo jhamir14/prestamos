@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 const Clients = () => {
     const [clients, setClients] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
     const [showForm, setShowForm] = useState(false);
+
+    // ... existing state ...
     const [formData, setFormData] = useState({
         nombres: '', apellidos: '', dni: '', email: '', domicilio: '', telefono: ''
     });
@@ -81,13 +84,31 @@ const Clients = () => {
         }
     };
 
+    const filteredClients = clients.filter(client =>
+        client.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.dni.includes(searchTerm)
+    );
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Clientes</h2>
-                <button onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ nombres: '', apellidos: '', dni: '', email: '', domicilio: '', telefono: '' }); }} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center hover:bg-blue-700">
-                    <Plus className="w-4 h-4 mr-2" /> {showForm ? 'Cerrar' : 'Nuevo Cliente'}
-                </button>
+                <div className="flex space-x-2">
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Buscar cliente..."
+                            className="border p-2 pl-8 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <Search className="w-4 h-4 absolute left-2.5 top-3 text-gray-500" />
+                    </div>
+                    <button onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ nombres: '', apellidos: '', dni: '', email: '', domicilio: '', telefono: '' }); }} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center hover:bg-blue-700">
+                        <Plus className="w-4 h-4 mr-2" /> {showForm ? 'Cerrar' : 'Nuevo Cliente'}
+                    </button>
+                </div>
             </div>
 
             {showForm && (
@@ -117,7 +138,7 @@ const Clients = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {clients.map(client => (
+                        {filteredClients.map(client => (
                             <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-300">
                                 <td className="p-4">{client.nombres} {client.apellidos}</td>
                                 <td className="p-4">{client.dni}</td>

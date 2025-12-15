@@ -3,6 +3,7 @@ import api from '../api';
 import { Plus, Download, Calendar, Trash2 } from 'lucide-react';
 import PaymentCalendarModal from '../components/PaymentCalendarModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import SearchableSelect from '../components/SearchableSelect';
 
 const Loans = () => {
     const [loans, setLoans] = useState([]);
@@ -115,6 +116,18 @@ const Loans = () => {
         }
     };
 
+    const confirmDownload = (loan) => {
+        const client = clients.find(c => c.id === loan.cliente);
+        const clientName = client ? `${client.nombres}_${client.apellidos}`.replace(/ /g, '_') : 'cliente';
+        const pdfName = `prestamo_${clientName}.pdf`;
+
+        setConfirmTitle('Confirmar Descarga');
+        setConfirmMessage(`¿Deseas descargar el pdf con el nombre ${pdfName}?`);
+        setConfirmDestructive(false);
+        setConfirmAction(() => () => handleDownloadPdf(loan));
+        setIsConfirmOpen(true);
+    };
+
     const handleOpenCalendar = async (loan) => {
         try {
             const res = await api.get(`/loans/loans/${loan.id}/`);
@@ -178,10 +191,14 @@ const Loans = () => {
                 <div className="bg-white dark:bg-gray-800 p-6 rounded shadow mb-6 transition-colors duration-200">
                     <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Registrar Préstamo</h3>
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <select className="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.cliente} onChange={e => setFormData({ ...formData, cliente: e.target.value })} required>
-                            <option value="">Seleccionar Cliente</option>
-                            {clients.map(c => <option key={c.id} value={c.id}>{c.nombres} {c.apellidos}</option>)}
-                        </select>
+                        <div className="z-50">
+                            <SearchableSelect
+                                options={clients}
+                                value={formData.cliente}
+                                onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
+                                placeholder="Seleccionar Cliente"
+                            />
+                        </div>
                         <input placeholder="Monto Prestado" type="number" className="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.monto_prestado} onChange={e => setFormData({ ...formData, monto_prestado: e.target.value })} required />
                         <input placeholder="Interés %" type="number" step="0.01" className="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.interes} onChange={e => setFormData({ ...formData, interes: e.target.value })} required />
                         <input placeholder="Cuotas Totales" type="number" className="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.cuotas_totales} onChange={e => setFormData({ ...formData, cuotas_totales: e.target.value })} required />
@@ -227,7 +244,7 @@ const Loans = () => {
                                     <button onClick={() => handleOpenCalendar(loan)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300" title="Ver Calendario">
                                         <Calendar className="w-5 h-5" />
                                     </button>
-                                    <button onClick={() => handleDownloadPdf(loan)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" title="Descargar PDF">
+                                    <button onClick={() => confirmDownload(loan)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" title="Descargar PDF">
                                         <Download className="w-5 h-5" />
                                     </button>
                                     <button onClick={() => handleDeleteClick(loan.id)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" title="Eliminar">

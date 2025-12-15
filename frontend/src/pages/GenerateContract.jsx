@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { FileText, Download, Search } from 'lucide-react';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const GenerateContract = () => {
     const [contracts, setContracts] = useState([]);
@@ -8,6 +9,13 @@ const GenerateContract = () => {
     const [motos, setMotos] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
+
+    // Confirmation Modal State
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [confirmAction, setConfirmAction] = useState(null);
+    const [confirmMessage, setConfirmMessage] = useState('');
+    const [confirmTitle, setConfirmTitle] = useState('');
+    const [confirmDestructive, setConfirmDestructive] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -47,6 +55,17 @@ const GenerateContract = () => {
             console.error('Error downloading PDF:', err);
             alert('Error downloading PDF');
         }
+    };
+
+    const confirmDownload = (contract) => {
+        const clientName = getClientName(contract.cliente).replace(/ /g, '_');
+        const pdfName = `contrato_legal_${clientName}.pdf`;
+
+        setConfirmTitle('Confirmar Descarga');
+        setConfirmMessage(`¿Deseas descargar el pdf con el nombre ${pdfName}?`);
+        setConfirmDestructive(false);
+        setConfirmAction(() => () => handleDownloadPdf(contract));
+        setIsConfirmOpen(true);
     };
 
     const getClientName = (id) => {
@@ -108,7 +127,7 @@ const GenerateContract = () => {
                                     <td className="p-4">{contract.fecha_contrato}</td>
                                     <td className="p-4">
                                         <button
-                                            onClick={() => handleDownloadPdf(contract)}
+                                            onClick={() => confirmDownload(contract)}
                                             className="bg-blue-600 text-white px-4 py-2 rounded flex items-center hover:bg-blue-700 transition-colors"
                                         >
                                             <FileText className="w-4 h-4 mr-2" /> Generar PDF
@@ -127,6 +146,15 @@ const GenerateContract = () => {
                     </table>
                 </div>
             </div>
+
+            <ConfirmationModal
+                isOpen={isConfirmOpen}
+                onClose={() => setIsConfirmOpen(false)}
+                onConfirm={confirmAction}
+                title={confirmTitle}
+                message={confirmMessage}
+                isDestructive={confirmDestructive}
+            />
         </div>
     );
 };

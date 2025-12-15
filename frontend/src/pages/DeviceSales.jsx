@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { Plus, ShoppingCart, Calendar, Trash2, Eye, X, Download } from 'lucide-react';
+import SearchableSelect from '../components/SearchableSelect';
+import { Plus, ShoppingCart, Calendar, Trash2, Eye, X, Download, FileText } from 'lucide-react';
 import PaymentCalendarModal from '../components/PaymentCalendarModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 
@@ -46,12 +47,23 @@ const DeviceSales = () => {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [confirmMessage, setConfirmMessage] = useState('');
+    const [confirmTitle, setConfirmTitle] = useState('');
+    const [confirmDestructive, setConfirmDestructive] = useState(false);
 
     useEffect(() => {
         fetchSales();
         fetchDevices();
         fetchClients();
     }, []);
+    // ... (skip middle content) ...
+    <ConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmAction}
+        title={confirmTitle}
+        message={confirmMessage}
+        isDestructive={confirmDestructive}
+    />
 
     const fetchSales = () => {
         api.get('/devices/sales/').then(res => setSales(res.data));
@@ -150,7 +162,9 @@ const DeviceSales = () => {
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `${sale.cliente}_venta_celular.pdf`); // Fallback name, backend header usually takes precedence
+            const client = clients.find(c => c.id === sale.cliente);
+            const clientName = client ? `${client.nombres}_${client.apellidos}`.replace(/ /g, '_') : 'cliente';
+            link.setAttribute('download', `venta_celular_${clientName}.pdf`);
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -160,8 +174,54 @@ const DeviceSales = () => {
         }
     };
 
+    const handleDownloadContractPDF = async (sale) => {
+        try {
+            const response = await api.get(`/devices/sales/${sale.id}/download_contract_pdf/`, {
+                responseType: 'blob',
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+
+            const client = clients.find(c => c.id === sale.cliente);
+            const clientName = client ? `${client.nombres}_${client.apellidos}`.replace(/ /g, '_') : 'cliente';
+            link.setAttribute('download', `contrato_celular_${clientName}.pdf`);
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error('Error downloading PDF:', err);
+            alert('Error al descargar el contrato');
+        }
+    };
+
+    const confirmDownload = (sale, type = 'schedule') => {
+        const client = clients.find(c => c.id === sale.cliente);
+        const clientName = client ? `${client.nombres}_${client.apellidos}`.replace(/ /g, '_') : 'cliente';
+
+        let pdfName;
+        let action;
+
+        if (type === 'contract') {
+            pdfName = `contrato_celular_${clientName}.pdf`;
+            action = () => handleDownloadContractPDF(sale);
+        } else {
+            pdfName = `venta_celular_${clientName}.pdf`;
+            action = () => handleDownloadPDF(sale);
+        }
+
+        setConfirmTitle('Confirmar Descarga');
+        setConfirmMessage(`¿Deseas descargar el pdf con el nombre ${pdfName}?`);
+        setConfirmDestructive(false);
+        setConfirmAction(() => action);
+        setIsConfirmOpen(true);
+    };
+
     const handleDeleteClick = (id) => {
+        setConfirmTitle('Eliminar Venta');
         setConfirmMessage('¿Estás seguro de eliminar esta venta?');
+        setConfirmDestructive(true);
         setConfirmAction(() => () => deleteSale(id));
         setIsConfirmOpen(true);
     };
@@ -194,10 +254,14 @@ const DeviceSales = () => {
                             <option value="">Seleccionar Dispositivo</option>
                             {devices.map(d => <option key={d.id} value={d.id}>{d.marca} {d.modelo} - S/ {d.precio}</option>)}
                         </select>
-                        <select className="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.cliente} onChange={e => setFormData({ ...formData, cliente: e.target.value })} required>
-                            <option value="">Seleccionar Cliente</option>
-                            {clients.map(c => <option key={c.id} value={c.id}>{c.nombres} {c.apellidos}</option>)}
-                        </select>
+                        <div className="z-50">
+                            <SearchableSelect
+                                options={clients}
+                                value={formData.cliente}
+                                onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
+                                placeholder="Seleccionar Cliente"
+                            />
+                        </div>
                         <select className="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.tipo} onChange={e => setFormData({ ...formData, tipo: e.target.value })}>
                             <option value="Contado">Contado</option>
                             <option value="Credito">Crédito</option>
@@ -276,10 +340,18 @@ const DeviceSales = () => {
                                             <button onClick={() => handleOpenCalendar(sale)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300" title="Ver Calendario">
                                                 <Calendar className="w-5 h-5" />
                                             </button>
-                                            <button onClick={() => handleDownloadPDF(sale)} className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300" title="Descargar PDF">
+                                            <button onClick={() => confirmDownload(sale, 'schedule')} className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300" title="Descargar Cronograma">
                                                 <Download className="w-5 h-5" />
                                             </button>
+                                            <button onClick={() => confirmDownload(sale, 'contract')} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" title="Descargar Contrato">
+                                                <FileText className="w-5 h-5" />
+                                            </button>
                                         </>
+                                    )}
+                                    {sale.tipo === 'Contado' && (
+                                        <button onClick={() => confirmDownload(sale, 'contract')} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" title="Descargar Contrato">
+                                            <FileText className="w-5 h-5" />
+                                        </button>
                                     )}
                                     <button onClick={() => handleDeleteClick(sale.id)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
                                         <Trash2 className="w-5 h-5" />
@@ -346,8 +418,9 @@ const DeviceSales = () => {
                 isOpen={isConfirmOpen}
                 onClose={() => setIsConfirmOpen(false)}
                 onConfirm={confirmAction}
+                title={confirmTitle}
                 message={confirmMessage}
-                isDestructive={true}
+                isDestructive={confirmDestructive}
             />
         </div>
     );

@@ -3,6 +3,7 @@ import api from '../api';
 import { Plus, Download, Calendar, FileText } from 'lucide-react';
 import PaymentCalendarModal from '../components/PaymentCalendarModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import SearchableSelect from '../components/SearchableSelect';
 
 const Contracts = () => {
     const [contracts, setContracts] = useState([]);
@@ -104,6 +105,18 @@ const Contracts = () => {
         }
     };
 
+    const confirmDownload = (contract, type) => {
+        const client = clients.find(c => c.id === contract.cliente);
+        const clientName = client ? `${client.nombres}_${client.apellidos}`.replace(/ /g, '_') : 'cliente';
+        const pdfName = type === 'schedule' ? `calendario_pagos_${clientName}.pdf` : `contrato_legal_${clientName}.pdf`;
+
+        setConfirmTitle('Confirmar Descarga');
+        setConfirmMessage(`¿Deseas descargar el pdf con el nombre ${pdfName}?`);
+        setConfirmDestructive(false);
+        setConfirmAction(() => () => handleDownloadPdf(contract, type));
+        setIsConfirmOpen(true);
+    };
+
     const handleOpenCalendar = async (contract) => {
         try {
             // Assuming the contract object already has 'cuotas' or we fetch them. 
@@ -171,10 +184,14 @@ const Contracts = () => {
                 <div className="bg-white dark:bg-gray-800 p-6 rounded shadow mb-6 transition-colors duration-200">
                     <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Registrar Contrato</h3>
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <select className="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.cliente} onChange={e => setFormData({ ...formData, cliente: e.target.value })} required>
-                            <option value="">Seleccionar Cliente</option>
-                            {clients.map(c => <option key={c.id} value={c.id}>{c.nombres} {c.apellidos}</option>)}
-                        </select>
+                        <div className="z-50">
+                            <SearchableSelect
+                                options={clients}
+                                value={formData.cliente}
+                                onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
+                                placeholder="Seleccionar Cliente"
+                            />
+                        </div>
                         <select className="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.moto} onChange={e => setFormData({ ...formData, moto: e.target.value })} required>
                             <option value="">Seleccionar Moto</option>
                             {motos.filter(m => m.estado === 'Disponible').map(m => <option key={m.id} value={m.id}>{m.marca} {m.modelo} - {m.placa} (S/ {m.precio})</option>)}
@@ -229,10 +246,10 @@ const Contracts = () => {
                                     <button onClick={() => handleOpenCalendar(contract)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300" title="Ver Calendario">
                                         <Calendar className="w-5 h-5" />
                                     </button>
-                                    <button onClick={() => handleDownloadPdf(contract, 'schedule')} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" title="Descargar Calendario">
+                                    <button onClick={() => confirmDownload(contract, 'schedule')} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" title="Descargar Calendario">
                                         <FileText className="w-5 h-5" />
                                     </button>
-                                    <button onClick={() => handleDownloadPdf(contract, 'contract')} className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300" title="Descargar Contrato Legal">
+                                    <button onClick={() => confirmDownload(contract, 'contract')} className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300" title="Descargar Contrato Legal">
                                         <Download className="w-5 h-5" />
                                     </button>
                                 </td>

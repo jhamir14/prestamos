@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Filter } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 const Payments = () => {
     const [installments, setInstallments] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filterType, setFilterType] = useState('default'); // 'default' (overdue+today), 'today', 'overdue', 'all'
 
     // Payment Form State
     const [payingItem, setPayingItem] = useState(null);
@@ -75,23 +76,64 @@ const Payments = () => {
 
     const overdue = installments.filter(i => !i.pagado && i.fecha_vencimiento < todayStr);
     const today = installments.filter(i => !i.pagado && i.fecha_vencimiento === todayStr);
+    const allPending = installments.filter(i => !i.pagado);
 
-    // Filtered list for display (only overdue and today)
-    const displayedInstallments = [...overdue, ...today].sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento));
+    let displayedInstallments = [];
+    if (filterType === 'today') {
+        displayedInstallments = today;
+    } else if (filterType === 'overdue') {
+        displayedInstallments = overdue;
+    } else if (filterType === 'all') {
+        displayedInstallments = allPending;
+    } else {
+        // Default: Overdue + Today
+        displayedInstallments = [...overdue, ...today];
+    }
+
+    displayedInstallments.sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento));
 
     return (
         <div>
-            <h2 className="text-3xl font-bold mb-6">Pagos del Día / Vencidos</h2>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Pagos</h2>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-red-100 dark:bg-red-900 p-4 rounded text-red-800 dark:text-red-200">
+                <div onClick={() => setFilterType('overdue')} className="bg-red-100 dark:bg-red-900 p-4 rounded text-red-800 dark:text-red-200 cursor-pointer hover:bg-red-200 transition-colors">
                     <h3 className="font-bold text-lg">Vencidos</h3>
                     <p className="text-2xl">{overdue.length} cuotas</p>
                 </div>
-                <div className="bg-yellow-100 dark:bg-yellow-900 p-4 rounded text-yellow-800 dark:text-yellow-200">
+                <div onClick={() => setFilterType('today')} className="bg-yellow-100 dark:bg-yellow-900 p-4 rounded text-yellow-800 dark:text-yellow-200 cursor-pointer hover:bg-yellow-200 transition-colors">
                     <h3 className="font-bold text-lg">Hoy</h3>
                     <p className="text-2xl">{today.length} cuotas</p>
                 </div>
+            </div>
+
+            <div className="flex space-x-2 mb-4 overflow-x-auto pb-2">
+                <button
+                    onClick={() => setFilterType('default')}
+                    className={`px-4 py-2 rounded whitespace-nowrap ${filterType === 'default' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
+                >
+                    Prioritarios
+                </button>
+                <button
+                    onClick={() => setFilterType('overdue')}
+                    className={`px-4 py-2 rounded whitespace-nowrap ${filterType === 'overdue' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
+                >
+                    Vencidos
+                </button>
+                <button
+                    onClick={() => setFilterType('today')}
+                    className={`px-4 py-2 rounded whitespace-nowrap ${filterType === 'today' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
+                >
+                    Hoy
+                </button>
+                <button
+                    onClick={() => setFilterType('all')}
+                    className={`px-4 py-2 rounded whitespace-nowrap ${filterType === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
+                >
+                    Todos (Pendientes)
+                </button>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded shadow overflow-x-auto transition-colors duration-200">
@@ -108,7 +150,7 @@ const Payments = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {displayedInstallments.map((item, idx) => {
+                        {displayedInstallments.length > 0 ? displayedInstallments.map((item, idx) => {
                             const abonado = parseFloat(item.monto_pagado || 0);
                             const pendiente = parseFloat(item.monto) - abonado;
                             return (
@@ -140,7 +182,11 @@ const Payments = () => {
                                     </td>
                                 </tr>
                             );
-                        })}
+                        }) : (
+                            <tr>
+                                <td colSpan="7" className="p-4 text-center text-gray-500">No hay pagos pendientes para este filtro.</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

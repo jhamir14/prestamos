@@ -26,7 +26,7 @@ class PrestamoViewSet(viewsets.ModelViewSet):
         elements = []
 
         # Title
-        elements.append(Paragraph(f"Cronograma de Pagos - Préstamo #{prestamo.id}", styles['Title']))
+        elements.append(Paragraph(f"Calendario de Pagos - Préstamo - {prestamo.cliente.nombres} {prestamo.cliente.apellidos}", styles['Title']))
         elements.append(Spacer(1, 12))
 
         # Details

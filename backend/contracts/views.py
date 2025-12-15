@@ -31,7 +31,7 @@ class ContratoMotoViewSet(viewsets.ModelViewSet):
         elements = []
 
         # Title
-        elements.append(Paragraph(f"Calendario de Pagos - Contrato #{contrato.id}", styles['Title']))
+        elements.append(Paragraph(f"Calendario de Pagos - Venta Moto - {contrato.cliente.nombres} {contrato.cliente.apellidos}", styles['Title']))
         elements.append(Spacer(1, 12))
 
         # Details
