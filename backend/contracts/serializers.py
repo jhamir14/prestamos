@@ -13,6 +13,9 @@ class CuotaContratoSerializer(serializers.ModelSerializer):
     def get_client_name(self, obj):
         return f"{obj.contrato.cliente.nombres} {obj.contrato.cliente.apellidos}"
 
+    def get_moto_name(self, obj):
+        return f"{obj.contrato.moto.marca} {obj.contrato.moto.modelo}"
+
 class ContratoMotoSerializer(serializers.ModelSerializer):
     cuotas = CuotaContratoSerializer(many=True, read_only=True)
 

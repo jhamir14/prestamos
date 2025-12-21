@@ -11,9 +11,18 @@ class DeviceSerializer(serializers.ModelSerializer):
 
 
 class DeviceInstallmentSerializer(serializers.ModelSerializer):
+    client_name = serializers.SerializerMethodField()
+    device_name = serializers.SerializerMethodField()
+
     class Meta:
         model = DeviceInstallment
         fields = '__all__'
+
+    def get_client_name(self, obj):
+        return f"{obj.sale.cliente.nombres} {obj.sale.cliente.apellidos}"
+
+    def get_device_name(self, obj):
+        return f"{obj.sale.device.marca} {obj.sale.device.modelo}"
 
 class DeviceSaleSerializer(serializers.ModelSerializer):
     installments = DeviceInstallmentSerializer(many=True, read_only=True)

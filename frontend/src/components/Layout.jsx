@@ -27,17 +27,17 @@ const Layout = () => {
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
             {/* Mobile Header */}
-            <div className="md:hidden fixed top-0 w-full bg-white dark:bg-gray-800 shadow-md z-20 flex justify-between items-center p-4">
+            <div className="md:hidden fixed top-0 w-full bg-white/80 dark:bg-gray-800/90 backdrop-blur-md shadow-sm z-20 flex justify-between items-center p-4 border-b dark:border-gray-700">
                 <div className="flex items-center">
                     <img src="/logoJP.png" alt="Logo" className="h-8 w-auto mr-2" />
-                    <span className="font-bold text-blue-600 dark:text-blue-400">JP Motors</span>
+                    <span className="font-bold text-xl text-blue-600 dark:text-blue-400 tracking-tight">JP Motors</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">
                         {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                     </button>
-                    <button onClick={toggleSidebar} className="text-gray-700 dark:text-gray-200">
-                        {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+                    <button onClick={toggleSidebar} className="p-1 text-gray-700 dark:text-gray-200">
+                        {isSidebarOpen ? <X size={26} /> : <Menu size={26} />}
                     </button>
                 </div>
             </div>
@@ -55,13 +55,13 @@ const Layout = () => {
                 fixed md:static inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg flex flex-col z-30 transform transition-transform duration-300 ease-in-out
                 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
             `}>
-                <div className="p-6 flex flex-col items-center relative border-b dark:border-gray-700 hidden md:flex">
-                    <button onClick={toggleTheme} className="absolute top-2 right-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                        {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+                <div className="p-6 flex flex-col items-center relative border-b dark:border-gray-800 hidden md:flex">
+                    <button onClick={toggleTheme} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors">
+                        {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
                     </button>
-                    <div className="flex flex-col items-center mt-2">
-                        <img src="/logoJP.png" alt="Logo" className="h-12 w-auto mb-2" />
-                        <h1 className="text-lg font-bold text-blue-600 dark:text-blue-400 text-center leading-tight">Inversiones JP<br />Motors</h1>
+                    <div className="flex flex-col items-center mt-4">
+                        <img src="/logoJP.png" alt="Logo" className="h-14 w-auto mb-3" />
+                        <h1 className="text-xl font-extrabold text-blue-600 dark:text-blue-500 text-center leading-tight tracking-tight">Inversiones JP<br />Motors</h1>
                     </div>
                 </div>
 
@@ -82,11 +82,14 @@ const Layout = () => {
                                 key={item.path}
                                 to={item.path}
                                 onClick={() => setIsSidebarOpen(false)}
-                                className={`flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 ${isActive ? 'bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 border-r-4 border-blue-600 dark:border-blue-400' : ''
+                                className={`flex items-center px-6 py-3.5 mx-2 rounded-lg transition-all duration-200 group
+                                    ${isActive
+                                        ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none'
+                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-blue-600 dark:hover:text-blue-400'
                                     }`}
                             >
-                                <Icon className="w-5 h-5 mr-3" />
-                                <span className="font-medium">{item.name}</span>
+                                <Icon className={`w-5 h-5 mr-3 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-blue-500 dark:text-gray-500 dark:group-hover:text-blue-400'}`} />
+                                <span className={`font-medium ${isActive ? 'font-semibold' : ''}`}>{item.name}</span>
                             </Link>
                         );
                     })}

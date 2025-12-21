@@ -141,8 +141,15 @@ const Loans = () => {
     };
 
     const [filterStatus, setFilterStatus] = useState('Activo');
+    const [searchTerm, setSearchTerm] = useState('');
 
-    const filteredLoans = loans.filter(loan => loan.estado === filterStatus);
+    const filteredLoans = loans.filter(loan => {
+        const matchesStatus = loan.estado === filterStatus;
+        const client = clients.find(c => c.id === loan.cliente);
+        const clientName = client ? `${client.nombres} ${client.apellidos}`.toLowerCase() : '';
+        const matchesSearch = clientName.includes(searchTerm.toLowerCase());
+        return matchesStatus && matchesSearch;
+    });
 
     const handlePaymentSubmit = async (installment, amount, method) => {
         try {
@@ -187,6 +194,16 @@ const Loans = () => {
                 </button>
             </div>
 
+            <div className="flex space-x-4 mb-6">
+                <input
+                    type="text"
+                    placeholder="Buscar por cliente..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="border p-2 rounded w-full md:w-1/3 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+            </div>
+
             {showForm && (
                 <div className="bg-white dark:bg-gray-800 p-6 rounded shadow mb-6 transition-colors duration-200">
                     <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Registrar Préstamo</h3>
@@ -220,7 +237,52 @@ const Loans = () => {
                 </div>
             )}
 
-            <div className="bg-white dark:bg-gray-800 rounded shadow overflow-x-auto transition-colors duration-200">
+            {/* Mobile Cards / Desktop Table */}
+            <div className="grid grid-cols-1 gap-4 md:hidden mb-6">
+                {filteredLoans.map(loan => (
+                    <div key={loan.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-100 dark:border-gray-700">
+                        <div className="flex justify-between items-start mb-2">
+                            <div>
+                                <h3 className="font-bold text-gray-900 dark:text-white">{clients.find(c => c.id === loan.cliente)?.nombres}</h3>
+                                <div className="text-xs text-gray-500">ID: {loan.id}</div>
+                            </div>
+                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full dark:bg-blue-900 dark:text-blue-200">
+                                {loan.frecuencia}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4 bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
+                            <div>
+                                <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Monto</p>
+                                <p className="font-semibold dark:text-gray-200">S/ {loan.monto_prestado}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Deuda Total</p>
+                                <p className="font-bold text-gray-900 dark:text-white">S/ {loan.monto_total_deuda}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-3 border-t dark:border-gray-700">
+                            <button onClick={() => handleOpenCalendar(loan)} className="flex items-center text-sm text-green-600 dark:text-green-400">
+                                <Calendar className="w-4 h-4 mr-1" /> Ver Cuotas
+                            </button>
+                            <div className="flex space-x-3">
+                                <button onClick={() => confirmDownload(loan)} className="text-blue-600 dark:text-blue-400">
+                                    <Download className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDeleteClick(loan.id)} className="text-red-600 dark:text-red-400">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+                {filteredLoans.length === 0 && (
+                    <div className="text-center text-gray-500 py-8">No se encontraron préstamos.</div>
+                )}
+            </div>
+
+            <div className="hidden md:block bg-white dark:bg-gray-800 rounded shadow overflow-x-auto transition-colors duration-200">
                 <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>

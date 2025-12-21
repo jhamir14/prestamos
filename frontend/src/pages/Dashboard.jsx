@@ -193,7 +193,29 @@ const Dashboard = () => {
                 <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-colors duration-200">
                     <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Actividad Reciente</h3>
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <div className="md:hidden space-y-4">
+                            {metrics.recent_activity && metrics.recent_activity.map((item, idx) => (
+                                <div key={idx} className="bg-gray-50 dark:bg-gray-750 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${item.type === 'Préstamo' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'}`}>
+                                            {item.type}
+                                        </span>
+                                        <span className="text-xs text-gray-500">{item.date}</span>
+                                    </div>
+                                    <div className="flex justify-between items-end">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{item.client}</p>
+                                        </div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">S/ {item.amount}</p>
+                                    </div>
+                                </div>
+                            ))}
+                            {(!metrics.recent_activity || metrics.recent_activity.length === 0) && (
+                                <p className="text-center text-gray-500 dark:text-gray-400 py-4">No hay actividad reciente</p>
+                            )}
+                        </div>
+
+                        <table className="w-full hidden md:table">
                             <thead>
                                 <tr className="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
                                     <th className="pb-3">Tipo</th>

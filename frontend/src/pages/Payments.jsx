@@ -19,14 +19,16 @@ const Payments = () => {
 
     const fetchInstallments = async () => {
         try {
-            const [contractsRes, loansRes] = await Promise.all([
+            const [contractsRes, loansRes, devicesRes] = await Promise.all([
                 api.get('/contracts/installments/'),
-                api.get('/loans/installments/')
+                api.get('/loans/installments/'),
+                api.get('/devices/installments/')
             ]);
 
             const all = [
                 ...contractsRes.data.map(i => ({ ...i, type: 'Contrato', source_id: i.contrato })),
-                ...loansRes.data.map(i => ({ ...i, type: 'Préstamo', source_id: i.prestamo }))
+                ...loansRes.data.map(i => ({ ...i, type: 'Préstamo', source_id: i.prestamo })),
+                ...devicesRes.data.map(i => ({ ...i, type: 'Dispositivo', source_id: i.sale }))
             ].sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento));
 
             setInstallments(all);
@@ -48,7 +50,9 @@ const Payments = () => {
         e.preventDefault();
         const endpoint = payingItem.type === 'Contrato'
             ? `/contracts/installments/${payingItem.id}/pay/`
-            : `/loans/installments/${payingItem.id}/pay/`;
+            : payingItem.type === 'Dispositivo'
+                ? `/devices/installments/${payingItem.id}/pay/`
+                : `/loans/installments/${payingItem.id}/pay/`;
 
         try {
             await api.post(endpoint, {
@@ -99,13 +103,13 @@ const Payments = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div onClick={() => setFilterType('overdue')} className="bg-red-100 dark:bg-red-900 p-4 rounded text-red-800 dark:text-red-200 cursor-pointer hover:bg-red-200 transition-colors">
+                <div onClick={() => setFilterType('overdue')} className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-4 rounded-lg text-red-800 dark:text-red-300 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200">
                     <h3 className="font-bold text-lg">Vencidos</h3>
-                    <p className="text-2xl">{overdue.length} cuotas</p>
+                    <p className="text-2xl font-bold mt-1">{overdue.length} <span className="text-sm font-normal opacity-80">cuotas</span></p>
                 </div>
-                <div onClick={() => setFilterType('today')} className="bg-yellow-100 dark:bg-yellow-900 p-4 rounded text-yellow-800 dark:text-yellow-200 cursor-pointer hover:bg-yellow-200 transition-colors">
+                <div onClick={() => setFilterType('today')} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 p-4 rounded-lg text-amber-800 dark:text-amber-300 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all duration-200">
                     <h3 className="font-bold text-lg">Hoy</h3>
-                    <p className="text-2xl">{today.length} cuotas</p>
+                    <p className="text-2xl font-bold mt-1">{today.length} <span className="text-sm font-normal opacity-80">cuotas</span></p>
                 </div>
             </div>
 
@@ -136,7 +140,63 @@ const Payments = () => {
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded shadow overflow-x-auto transition-colors duration-200">
+            {/* Mobile Cards / Desktop Table */}
+            <div className="grid grid-cols-1 gap-4 md:hidden mb-6">
+                {displayedInstallments.length > 0 ? displayedInstallments.map((item) => {
+                    const abonado = parseFloat(item.monto_pagado || 0);
+                    const pendiente = parseFloat(item.monto) - abonado;
+                    return (
+                        <div key={`${item.type}-${item.id}`} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-100 dark:border-gray-700">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 className="font-bold text-gray-900 dark:text-white">{item.client_name}</h3>
+                                    <div className="text-xs text-gray-500">
+                                        {item.type === 'Dispositivo' ? item.device_name :
+                                            item.type === 'Contrato' ? item.moto_name :
+                                                item.type}
+                                        #{item.source_id}
+                                    </div>
+                                </div>
+                                <div>
+                                    {item.pagado ? (
+                                        <span className="text-green-600 bg-green-100 px-2 py-1 rounded-full text-xs font-semibold dark:bg-green-900 dark:text-green-300">Pagado</span>
+                                    ) : (
+                                        <span className="text-red-600 bg-red-100 px-2 py-1 rounded-full text-xs font-semibold dark:bg-red-900 dark:text-red-300">Pendiente</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4 bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
+                                <div>
+                                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Vence</p>
+                                    <p className="font-semibold text-red-600 dark:text-red-400">{item.fecha_vencimiento}</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Monto</p>
+                                    <p className="font-semibold dark:text-gray-200">S/ {item.monto}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Debe</p>
+                                    <p className="font-bold text-gray-900 dark:text-white">S/ {pendiente.toFixed(2)}</p>
+                                </div>
+                            </div>
+
+                            {!item.pagado && (
+                                <button
+                                    onClick={() => handlePayClick(item)}
+                                    className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium transition-colors shadow-sm"
+                                >
+                                    Registrar Pago
+                                </button>
+                            )}
+                        </div>
+                    );
+                }) : (
+                    <div className="text-center text-gray-500 py-8">No hay pagos pendientes para este filtro.</div>
+                )}
+            </div>
+
+            <div className="hidden md:block bg-white dark:bg-gray-800 rounded shadow overflow-x-auto transition-colors duration-200">
                 <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
@@ -158,7 +218,12 @@ const Payments = () => {
                                     <td className="p-4">{item.fecha_vencimiento}</td>
                                     <td className="p-4">
                                         <div className="font-bold">{item.client_name}</div>
-                                        <div className="text-xs text-gray-500">{item.type} #{item.source_id}</div>
+                                        <div className="text-xs text-gray-500">
+                                            {item.type === 'Dispositivo' ? item.device_name :
+                                                item.type === 'Contrato' ? item.moto_name :
+                                                    item.type}
+                                            #{item.source_id}
+                                        </div>
                                     </td>
                                     <td className="p-4">S/ {item.monto}</td>
                                     <td className="p-4 text-green-600">S/ {abonado.toFixed(2)}</td>
